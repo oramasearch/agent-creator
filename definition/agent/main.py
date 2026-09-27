@@ -120,7 +120,21 @@ def parse(text: str | None) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def run(context) -> str:
+def words(answer: dict[str, Any], problems: list[str]) -> str:
+    """What a person reads: the question, or the proposal in one sentence (agent-creator#1)."""
+    if answer.get("kind") == "question":
+        return (answer.get("question") or "").strip()
+    agent = (answer.get("proposal") or {}).get("agent") or {}
+    if answer.get("kind") == "proposal":
+        purpose = (agent.get("purpose") or "").strip()
+        text = f"I propose an agent named {agent.get('name') or 'without a name'}"
+        text += f": {purpose.rstrip('.')}." if purpose else "."
+        text += " Review it, and it is created only when you approve it."
+        return text + (" It still has problems: " + "; ".join(problems) + "." if problems else "")
+    return "I could not design an agent from that. Say what it should do and on which data."
+
+
+def run(context) -> dict[str, Any]:
     facts = workspace_facts(context)
     system = (context.agent.instructions
               + "\n\n## This workspace\n\nDatasets: " + json.dumps(facts["datasets"])
@@ -145,7 +159,9 @@ def run(context) -> str:
                          {"role": "user", "content": "Fix these and answer again with the whole "
                                                      "JSON object:\n" + "\n".join(
                                                          f"- {p}" for p in problems)}]
-    return json.dumps({**answer, "defects": problems, "facts": facts})
+    # Words for the person, the structured answer for lake and API callers (agent-creator#1).
+    return {"reply": words(answer, problems),
+            "result": {**answer, "defects": problems, "facts": facts}}
 
 
 STDLIB = {"json", "re", "os", "sys", "time", "datetime", "math", "statistics", "collections",
