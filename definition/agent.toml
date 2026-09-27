@@ -1,0 +1,4 @@
+# AgentCreator runs on agent-runtime (zetta#1017). The runtime loads this directory from the image.
+entrypoint = "agent.main:run"
+model = "gpt-5.5"
+dependencies = ["openai"]
