@@ -62,6 +62,7 @@ def test_every_rule_catches_its_defect():
         "carries no code": proposal(type="native", storage=""),
         "stored in zetta or lake": proposal(storage="s3"),
         "too large": proposal(files=[{"path": "data.txt", "contents": "x" * (901 * 1024)}]),
+        "only a python agent": proposal(type="native", storage="", files=[]),
     }
     for expected, answer in cases.items():
         assert any(expected in problem for problem in main.defects(answer, FACTS)), expected

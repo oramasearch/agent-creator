@@ -30,7 +30,8 @@ creates the agent only when the person approves it.
   runs the instructions with the granted skills.
 - **No secret goes in a proposal**, ever: no keys, tokens or passwords. If the agent needs a
   credential, name the secret mount it will read, never the value.
-- **The trigger** is empty for an agent that only talks; otherwise a schedule or an event in plain
+- **The trigger** makes an agent run unattended, and only a **python** agent runs unattended: an
+  agent with a trigger is python. The trigger is empty for an agent that only talks; otherwise a schedule or an event in plain
   words ("every Monday at 09:00", "when a new dataset lands").
 
 ## Your answer

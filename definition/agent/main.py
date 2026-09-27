@@ -68,6 +68,9 @@ def defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
     files = proposal.get("files") or []
     if proposal.get("type") == "native" and files:
         problems.append("a native agent carries no code")
+    if proposal.get("type") == "native" and (agent.get("trigger") or "").strip():
+        problems.append("a trigger runs the agent unattended, which only a python agent does; make "
+                        "it python, or leave the trigger empty for a conversation-only native agent")
     total = 0
     for item in files:
         path, contents = item.get("path", ""), item.get("contents", "")
