@@ -2,9 +2,9 @@
 
 It proposes and never creates: lake's Agent Factory shows the proposal and creates the agent only
 on the person's approval (lake#233). Everything it may put in a proposal is checked here, by rules,
-before the person sees it: solution authority from the live registry, skills from Studio's set,
-Pipelines that exist and are approved, code that compiles and imports only what the runtime ships,
-no secrets, and storage that fits the code.
+before the person sees it: App and build authority from lake's live grant, solution authority from
+the live registry, skills from Studio's set, Pipelines that exist and are approved, code that
+compiles and imports only what the runtime ships, no secrets, and storage that fits the code.
 """
 
 from __future__ import annotations
@@ -18,6 +18,42 @@ SKILLS = {"search", "generate-data", "train", "summarize", "call-api"}
 WORK_AREAS = {"workspace", "project", "dataset"}
 RUNTIME_PACKAGES = {"openai", "httpx", "pydantic", "pandas", "numpy"}
 SOLUTION_CAPABILITIES = ["decide", "list_ledger", "get_monitor", "get_roi_readout"]
+APP_READ_CAPABILITIES = [
+    "list_apps",
+    "get_app",
+    "receive_app_events",
+    "list_builds",
+    "get_build",
+    "receive_build_events",
+]
+APP_ACTION_CAPABILITIES = {
+    "create_app",
+    "deploy_app",
+    "rollback_app",
+    "delete_app",
+    "set_app_env",
+    "unset_app_env",
+    "set_app_auth",
+    "restart_app",
+    "stop_app",
+    "start_app",
+    "scale_app",
+    "set_app_zetta_binding",
+    "bind_service_to_app",
+    "unbind_service_from_app",
+    "create_service_and_bind_to_app",
+    "build_image",
+    "build_app",
+    "cancel_build",
+}
+APP_DELEGATION = {
+    "agent": "agent-application",
+    "kind": "app",
+}
+APP_FACT_SOURCE = (
+    "list_apps/get_app/receive_app_events; "
+    "list_builds/get_build/receive_build_events"
+)
 INLINE_LIMIT = 900 * 1024
 SECRET = re.compile(r"(sk-[A-Za-z0-9_\-]{16,}|ghp_[A-Za-z0-9]{20,}|(password|secret|token)\s*=\s*"
                     r"['\"][^'\"]{6,}['\"])", re.I)
@@ -135,11 +171,137 @@ def solution_facts(context) -> dict[str, Any]:
     }
 
 
+def _lake_arguments(context, **arguments: Any) -> dict[str, Any]:
+    turn_input = getattr(context, "input", {})
+    customer_id = turn_input.get("customer_id") if isinstance(turn_input, dict) else ""
+    if customer_id:
+        return {"customer_id": customer_id, **arguments}
+    return arguments
+
+
+def _app_inventory(
+    context,
+    granted_reads: set[str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], bool]:
+    required = {"list_apps", "get_app", "receive_app_events"}
+    missing = required - granted_reads
+    if missing:
+        return [], [], [f"App reads not granted: {sorted(missing)}"], False
+    listed = context.call_tool("list_apps", _lake_arguments(context))
+    if not listed.ok or not isinstance(listed.value, dict):
+        return [], [], [f"list_apps: {_tool_error(listed)}"], False
+    summaries = listed.value.get("apps")
+    if not isinstance(summaries, list):
+        return [], [], ["list_apps returned no apps list"], False
+
+    apps: list[dict[str, Any]] = []
+    event_batches: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for summary in summaries:
+        if not isinstance(summary, dict):
+            errors.append("list_apps returned an app that is not an object")
+            continue
+        app_id = str(summary.get("id") or summary.get("app_id") or "")
+        if not app_id:
+            errors.append("list_apps returned an app without an id")
+            continue
+        got = context.call_tool("get_app", _lake_arguments(context, app_id=app_id))
+        if got.ok and isinstance(got.value, dict):
+            apps.append(got.value)
+        else:
+            errors.append(f"get_app {app_id}: {_tool_error(got)}")
+        events = context.call_tool(
+            "receive_app_events",
+            _lake_arguments(context, app_id=app_id, from_sequence=1, wait_ms=0),
+        )
+        if events.ok and isinstance(events.value, dict):
+            event_batches.append({"app_id": app_id, **events.value})
+        else:
+            errors.append(f"receive_app_events {app_id}: {_tool_error(events)}")
+    return apps, event_batches, errors, True
+
+
+def _build_inventory(
+    context,
+    granted_reads: set[str],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], bool]:
+    required = {"list_builds", "get_build", "receive_build_events"}
+    missing = required - granted_reads
+    if missing:
+        return [], [], [f"build reads not granted: {sorted(missing)}"], False
+    listed = context.call_tool("list_builds", _lake_arguments(context))
+    if not listed.ok or not isinstance(listed.value, dict):
+        return [], [], [f"list_builds: {_tool_error(listed)}"], False
+    summaries = listed.value.get("builds")
+    if not isinstance(summaries, list):
+        return [], [], ["list_builds returned no builds list"], False
+
+    builds: list[dict[str, Any]] = []
+    event_batches: list[dict[str, Any]] = []
+    errors: list[str] = []
+    for summary in summaries:
+        if not isinstance(summary, dict):
+            errors.append("list_builds returned a build that is not an object")
+            continue
+        build_id = str(summary.get("id") or summary.get("build_id") or "")
+        if not build_id:
+            errors.append("list_builds returned a build without an id")
+            continue
+        got = context.call_tool("get_build", _lake_arguments(context, build_id=build_id))
+        if got.ok and isinstance(got.value, dict):
+            builds.append(got.value)
+        else:
+            errors.append(f"get_build {build_id}: {_tool_error(got)}")
+        events = context.call_tool(
+            "receive_build_events",
+            _lake_arguments(context, build_id=build_id, from_sequence=1, wait_ms=0),
+        )
+        if events.ok and isinstance(events.value, dict):
+            event_batches.append({"build_id": build_id, **events.value})
+        else:
+            errors.append(f"receive_build_events {build_id}: {_tool_error(events)}")
+    return builds, event_batches, errors, True
+
+
+def app_facts(context) -> dict[str, Any]:
+    """The live Ship Apps, builds and retained event batches visible to this turn."""
+    granted = getattr(context, "app_capabilities", {})
+    granted = granted if isinstance(granted, dict) else {}
+    granted_reads = {
+        item
+        for item in granted.get("reads", [])
+        if isinstance(item, str) and item in APP_READ_CAPABILITIES
+    }
+    granted_proposals = {
+        item
+        for item in granted.get("proposals", [])
+        if isinstance(item, str) and item in APP_ACTION_CAPABILITIES
+    }
+    apps, app_events, app_errors, apps_available = _app_inventory(context, granted_reads)
+    builds, build_events, build_errors, builds_available = _build_inventory(
+        context,
+        granted_reads,
+    )
+    return {
+        "apps": apps,
+        "app_events": app_events,
+        "builds": builds,
+        "build_events": build_events,
+        "app_read_capabilities": [
+            name for name in APP_READ_CAPABILITIES if name in granted_reads
+        ],
+        "app_action_capabilities": sorted(granted_proposals),
+        "app_source": APP_FACT_SOURCE if apps_available and builds_available else "unavailable",
+        "app_error": "; ".join(app_errors + build_errors),
+    }
+
+
 def workspace_facts(context) -> dict[str, Any]:
     """What exists: the datasets, and every approved Pipeline, read through the person's key."""
     # These reads are deliberately turn-scoped. Engine registries change as implementations land.
     facts: dict[str, Any] = {
         **solution_facts(context),
+        **app_facts(context),
         **methodology_facts(context),
         "datasets": [],
         "pipelines": [],
@@ -325,6 +487,97 @@ def _solution_proposal_defects(proposal: dict[str, Any], facts: dict[str, Any]) 
     return problems
 
 
+def _app_proposal_defects(proposal: dict[str, Any], facts: dict[str, Any]) -> list[str]:
+    """Keep app reads grantable and every app or build mutation proposal-only."""
+    access = proposal.get("app_capabilities")
+    if access is None:
+        return []
+    if not isinstance(access, dict):
+        return ["app_capabilities must be an object"]
+
+    problems: list[str] = []
+    if facts.get("app_source") != APP_FACT_SOURCE:
+        problems.append("app and build capabilities are unavailable for this turn")
+    if proposal.get("type") != "python":
+        problems.append("an app event subscription requires a python agent")
+
+    reads = access.get("reads")
+    if not isinstance(reads, list) or any(not isinstance(item, str) for item in reads):
+        problems.append("app reads must be a list of capability names")
+        reads = []
+    elif not reads or len(reads) != len(set(reads)):
+        problems.append("app reads must be non-empty and duplicate-free")
+    unknown_reads = set(reads) - set(facts.get("app_read_capabilities", []))
+    if unknown_reads:
+        problems.append(f"app reads outside this turn's grant: {sorted(unknown_reads)}")
+
+    subscriptions = access.get("subscriptions")
+    if (not isinstance(subscriptions, list)
+            or any(not isinstance(item, str) for item in subscriptions)):
+        problems.append("app subscriptions must be a list of topic names")
+        subscriptions = []
+    elif not subscriptions or len(subscriptions) != len(set(subscriptions)):
+        problems.append("app subscriptions must be non-empty and duplicate-free")
+
+    app_ids = {str(item.get("id") or item.get("app_id"))
+               for item in facts.get("apps", []) if isinstance(item, dict)}
+    build_ids = {str(item.get("id") or item.get("build_id"))
+                 for item in facts.get("builds", []) if isinstance(item, dict)}
+    for topic in subscriptions:
+        if topic.startswith("app-events."):
+            app_id = topic.removeprefix("app-events.")
+            if not app_id or app_id == "*" or app_id not in app_ids:
+                problems.append(f"subscription {topic} does not name a live app from this turn")
+            if "receive_app_events" not in reads:
+                problems.append("app-events subscriptions require receive_app_events")
+        elif topic == "build-events.*":
+            if "receive_build_events" not in reads or "list_builds" not in reads:
+                problems.append(
+                    "build-events.* requires list_builds and receive_build_events"
+                )
+        elif topic.startswith("build-events."):
+            build_id = topic.removeprefix("build-events.")
+            if not build_id or build_id not in build_ids:
+                problems.append(f"subscription {topic} does not name a live build from this turn")
+            if "receive_build_events" not in reads:
+                problems.append("build-events subscriptions require receive_build_events")
+        else:
+            problems.append(f"unsupported app subscription topic {topic}")
+
+    proposed = access.get("proposals")
+    if not isinstance(proposed, list) or any(not isinstance(item, str) for item in proposed):
+        problems.append("app proposals must be a list of app or build capability names")
+        proposed = []
+    elif len(proposed) != len(set(proposed)):
+        problems.append("app proposals must not contain duplicates")
+    unknown_actions = set(proposed) - set(facts.get("app_action_capabilities", []))
+    if unknown_actions:
+        problems.append(f"app proposals outside this turn's grant: {sorted(unknown_actions)}")
+    if access.get("application_agent") != APP_DELEGATION:
+        problems.append("app changes must delegate an app turn to agent-application")
+
+    config_files = [
+        item
+        for item in proposal.get("files", [])
+        if isinstance(item, dict) and item.get("path") == "agent.toml"
+    ]
+    if len(config_files) != 1:
+        problems.append("an app agent needs one agent.toml tool allow-list")
+        return problems
+    try:
+        settings = tomllib.loads(str(config_files[0].get("contents") or ""))
+    except tomllib.TOMLDecodeError:
+        return problems
+    allowed = settings.get("tools")
+    expected = set(reads) | set(proposed)
+    if (not isinstance(allowed, list)
+            or any(not isinstance(item, str) for item in allowed)
+            or len(allowed) != len(set(allowed))
+            or set(allowed) != expected):
+        problems.append("agent.toml tools must exactly match the App reads and proposals")
+    return problems
+
+
 def _proposal_methodology_defects(proposal: dict[str, Any], agent: dict[str, Any],
                                   facts: dict[str, Any]) -> tuple[list[str], list[str]]:
     """Return the declared dependencies and every availability problem they carry."""
@@ -392,6 +645,7 @@ def defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
         problems.append("work_area.kind must be workspace, project or dataset")
     dependencies, methodology_problems = _proposal_methodology_defects(proposal, agent, facts)
     problems.extend(methodology_problems)
+    problems.extend(_app_proposal_defects(proposal, facts))
     problems.extend(_solution_proposal_defects(proposal, facts))
     problems.extend(_pipeline_defects(proposal, facts, dependencies))
     files = proposal.get("files") or []
@@ -490,6 +744,15 @@ def run(context) -> dict[str, Any]:
               + "\n\nSolution source: " + facts["solution_source"]
               + "\n\nSolutions: " + json.dumps(facts["solutions"])
               + "\n\nSolution read error: " + json.dumps(facts["solution_error"])
+              + "\n\nApp and build source: " + facts["app_source"]
+              + "\n\nApp read capabilities: " + json.dumps(facts["app_read_capabilities"])
+              + "\n\nApp actions that may only be proposed: "
+              + json.dumps(facts["app_action_capabilities"])
+              + "\n\nApps: " + json.dumps(facts["apps"])
+              + "\n\nApp events: " + json.dumps(facts["app_events"])
+              + "\n\nBuilds: " + json.dumps(facts["builds"])
+              + "\n\nBuild events: " + json.dumps(facts["build_events"])
+              + "\n\nApp and build read error: " + json.dumps(facts["app_error"])
               + "\n\nMethodology source: " + facts["methodology_source"]
               + "\n\nMethodologies: " + json.dumps(facts["methodologies"])
               + "\n\nMethodology read error: " + json.dumps(facts["methodology_error"])

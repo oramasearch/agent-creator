@@ -1,7 +1,7 @@
 """AgentCreator's evals: generated asks, graded by rules, run live against a real workspace.
 
-The asks are generated from Studio's skills and work areas plus the live methodology and solution
-registries. Each is graded by `agent.main.defects` and case-specific facts. No judge.
+The asks are generated from Studio's skills and work areas plus live Apps, builds, methodologies
+and solutions. Each is graded by `agent.main.defects` and case-specific facts. No judge.
 
     LAKE_URL=... LAKE_TOKEN=<a person's token> CUSTOMER_ID=... uv run python evals/run.py
 """
@@ -33,7 +33,7 @@ AREAS = {"workspace": "anywhere in this workspace", "project": "only in the chur
 CODE_ASKS = {False: "", True: " It needs a small helper that formats results as a table."}
 
 
-def generated(methodologies=None, solutions=None, solution_source=""):
+def generated(methodologies=None, solutions=None, solution_source="", apps=None, app_source=""):
     for (skill, ask), (area, where), (code, extra) in itertools.product(
             SKILL_ASKS.items(), AREAS.items(), CODE_ASKS.items()):
         if code and skill in {"call-api", "generate-data"}:
@@ -101,6 +101,20 @@ def generated(methodologies=None, solutions=None, solution_source=""):
             "message": "Each Monday, operate the matching customer-retention solution and report "
                        "what changed. Do not ask me anything.",
         }
+    live_apps = [item for item in apps or [] if isinstance(item, dict)]
+    if app_source == main.APP_FACT_SOURCE and live_apps:
+        app = live_apps[0]
+        app_id = app.get("id") or app.get("app_id")
+        yield {
+            "id": f"app-{app_id}-watch-and-propose",
+            "expected_kind": "proposal",
+            "expected_app_id": app_id,
+            "expected_app_actions": ["build_app", "restart_app"],
+            "message": f"Alert me when App {app.get('name') or app_id} ({app_id}) crash-loops "
+                       "or one of its builds fails. Propose a rebuild or restart for me to "
+                       "confirm; never execute it yourself. Propose the agent now and do not ask "
+                       "me anything.",
+        }
 
 
 class LiveWorkspace:
@@ -113,7 +127,29 @@ class LiveWorkspace:
             transport=transport,
         )
 
+    def app_capabilities(self):
+        response = self.client.get("/v1/openapi.json")
+        document = response.json() if response.content else {}
+        names = {
+            path.removeprefix("/v1/")
+            for path in (document.get("paths") or {})
+            if isinstance(path, str)
+        }
+        return {
+            "reads": sorted(names & set(main.APP_READ_CAPABILITIES)),
+            "proposals": sorted(names & main.APP_ACTION_CAPABILITIES),
+        }
+
     def call_tool(self, name, arguments):
+        if name in main.APP_READ_CAPABILITIES:
+            parameters = {"customer_id": self.customer_id, **arguments}
+            response = self.client.get(f"/v1/{name}", params=parameters)
+            body = response.json() if response.content else {}
+            error = body.get("error") if isinstance(body, dict) else None
+            if isinstance(error, dict):
+                error = f"{error.get('code', response.status_code)}: {error.get('message', '')}"
+            return SimpleNamespace(ok=bool(body.get("ok")), value=body.get("value"),
+                                   error=error or "")
         response = self.client.post("/v1/workspace_query", json={
             "customer_id": self.customer_id,
             "capability": name,
@@ -132,19 +168,27 @@ def main_eval() -> int:
     instructions = (Path(__file__).resolve().parent.parent / "definition" /
                     "instructions.md").read_text()
     client, model = OpenAI(), os.environ.get("AGENT_MODEL", "gpt-5.5")
-    fact_context = SimpleNamespace(input={"customer_id": workspace.customer_id},
-                                   call_tool=workspace.call_tool)
+    app_capabilities = workspace.app_capabilities()
+    fact_context = SimpleNamespace(
+        input={"customer_id": workspace.customer_id},
+        app_capabilities=app_capabilities,
+        call_tool=workspace.call_tool,
+    )
     solution_snapshot = main.solution_facts(fact_context)
+    app_snapshot = main.app_facts(fact_context)
     methodology_snapshot = main.methodology_facts(fact_context)
     rows = []
     for case in generated(
         methodology_snapshot["methodologies"],
         solution_snapshot["solutions"],
         solution_snapshot["solution_source"],
+        app_snapshot["apps"],
+        app_snapshot["app_source"],
     ):
         context = SimpleNamespace(agent=SimpleNamespace(instructions=instructions),
                                   input={"message": case["message"], "history": [],
                                          "customer_id": workspace.customer_id},
+                                  app_capabilities=app_capabilities,
                                   client=client, model=model, call_tool=workspace.call_tool)
         turn = main.run(context)
         answer = turn["result"]
@@ -183,6 +227,21 @@ def main_eval() -> int:
         if case.get("expected_registry_missing"):
             if "not deployed yet" not in str(answer.get("reason") or ""):
                 reasons.append("did not say the solution registry is not deployed yet")
+        app_id = case.get("expected_app_id")
+        if app_id and answer.get("kind") == "proposal":
+            access = proposal.get("app_capabilities") or {}
+            expected_topic = f"app-events.{app_id}"
+            if expected_topic not in (access.get("subscriptions") or []):
+                reasons.append(f"did not subscribe to {expected_topic}")
+            if "build-events.*" not in (access.get("subscriptions") or []):
+                reasons.append("did not subscribe to build-events.*")
+            if set(access.get("reads") or []) != set(main.APP_READ_CAPABILITIES):
+                reasons.append("did not grant the six App and build reads")
+            for action in case.get("expected_app_actions") or []:
+                if action not in (access.get("proposals") or []):
+                    reasons.append(f"did not propose {action}")
+            if access.get("application_agent") != main.APP_DELEGATION:
+                reasons.append("did not delegate the confirmed change to ApplicationAgent")
         rows.append({"case": case, "passed": not reasons, "reasons": reasons, "answer": answer,
                      "reply": turn["reply"]})
     passed = sum(row["passed"] for row in rows)
@@ -192,8 +251,8 @@ def main_eval() -> int:
     (out / f"{stamp}-evals.json").write_text(json.dumps(rows, indent=1, default=str))
     lines = [f"# AgentCreator evals, {stamp}", "",
              f"**{passed} / {len(rows)} passed** with `{model}` against `{os.environ['LAKE_URL']}`.",
-             "Asks generated from Studio's skills, work areas and live registries; graded by "
-             "rules, no judge.", "",
+             "Asks generated from Studio's skills, work areas, Apps, builds and live registries; "
+             "graded by rules, no judge.", "",
              "| Case | Result |", "|---|---|"]
     lines += [f"| `{row['case']['id']}` | " + ("pass" if row["passed"] else
                                                  "FAIL: " + "; ".join(row["reasons"])) + " |"

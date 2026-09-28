@@ -68,10 +68,37 @@ B1 = {
     "autonomy_defaults": [],
     "promotion_condition": "Promote after controlled price experiments are available.",
 }
+APP = {
+    "id": "app-1",
+    "name": "checkout",
+    "desired": "running",
+    "phase": "Running",
+}
+APP_EVENT_BATCH = {
+    "events": [{"app_id": "app-1", "type": "rollout", "sequence": 1}],
+    "next_sequence": 2,
+}
+BUILD = {
+    "id": "build-1",
+    "app_id": "app-1",
+    "phase": "succeeded",
+}
+BUILD_EVENT_BATCH = {
+    "events": [{"build_id": "build-1", "type": "done", "sequence": 1}],
+    "next_sequence": 2,
+}
 FACTS = {
     "solutions": [S1, S5, B1],
     "solution_source": "list_solutions/get_solution",
     "solution_error": "",
+    "apps": [APP],
+    "app_events": [{"app_id": "app-1", **APP_EVENT_BATCH}],
+    "builds": [BUILD],
+    "build_events": [{"build_id": "build-1", **BUILD_EVENT_BATCH}],
+    "app_read_capabilities": main.APP_READ_CAPABILITIES,
+    "app_action_capabilities": sorted(main.APP_ACTION_CAPABILITIES),
+    "app_source": main.APP_FACT_SOURCE,
+    "app_error": "",
     "datasets": ["accounts"],
     "pipelines": [
         {
@@ -92,13 +119,23 @@ class Workspace:
     """The reads AgentCreator's skills grant, answered the way the workspace does."""
 
     def __init__(self, methodologies=None, methodology_error="", solutions=None,
-                 solution_error="", solution_details=None, solution_detail_error=""):
+                 solution_error="", solution_details=None, solution_detail_error="",
+                 apps=None, app_error="", builds=None, build_error=""):
+        self.input = {"customer_id": "customer-1"}
         self.methodologies = methodologies if methodologies is not None else [M1, M4, M7]
         self.methodology_error = methodology_error
         self.solutions = solutions if solutions is not None else [S1, S5, B1]
         self.solution_error = solution_error
         self.solution_details = solution_details or {}
         self.solution_detail_error = solution_detail_error
+        self.apps = apps if apps is not None else [APP]
+        self.app_error = app_error
+        self.builds = builds if builds is not None else [BUILD]
+        self.build_error = build_error
+        self.app_capabilities = {
+            "reads": list(main.APP_READ_CAPABILITIES),
+            "proposals": sorted(main.APP_ACTION_CAPABILITIES),
+        }
         self.calls = []
 
     def call_tool(self, name, arguments):
@@ -119,6 +156,30 @@ class Workspace:
             if found is not None:
                 return ok({"solution": found})
             return SimpleNamespace(ok=False, value=None, error="not_found")
+        if name == "list_apps" and self.app_error:
+            return SimpleNamespace(ok=False, value=None, error=self.app_error)
+        if name == "list_apps":
+            return ok({"apps": self.apps})
+        if name == "get_app":
+            found = next((item for item in self.apps
+                          if item.get("id") == arguments["app_id"]), None)
+            if found is not None:
+                return ok(found)
+            return SimpleNamespace(ok=False, value=None, error="not_found")
+        if name == "receive_app_events":
+            return ok(APP_EVENT_BATCH)
+        if name == "list_builds" and self.build_error:
+            return SimpleNamespace(ok=False, value=None, error=self.build_error)
+        if name == "list_builds":
+            return ok({"builds": self.builds})
+        if name == "get_build":
+            found = next((item for item in self.builds
+                          if item.get("id") == arguments["build_id"]), None)
+            if found is not None:
+                return ok(found)
+            return SimpleNamespace(ok=False, value=None, error="not_found")
+        if name == "receive_build_events":
+            return ok(BUILD_EVENT_BATCH)
         if name == "list_methodologies" and self.methodology_error:
             return SimpleNamespace(ok=False, value=None, error=self.methodology_error)
         if name == "list_methodologies":
@@ -162,6 +223,23 @@ def solution_binding(**changes):
     return value
 
 
+def app_capabilities(**changes):
+    value = {
+        "reads": main.APP_READ_CAPABILITIES,
+        "subscriptions": ["app-events.app-1", "build-events.*"],
+        "proposals": ["build_app", "restart_app"],
+        "application_agent": main.APP_DELEGATION,
+    }
+    value.update(changes)
+    return value
+
+
+def app_files(access=None):
+    access = access or app_capabilities()
+    allowed = access["reads"] + access["proposals"]
+    return [{"path": "agent.toml", "contents": "tools = " + json.dumps(allowed) + "\n"}]
+
+
 def test_only_approved_pipelines_are_facts():
     workspace = Workspace()
     assert main.workspace_facts(workspace) == FACTS
@@ -171,7 +249,31 @@ def test_only_approved_pipelines_are_facts():
         ("get_solution", {"solution": "S-5"}),
         ("get_solution", {"solution": "B-1"}),
     ]
-    assert workspace.calls[4] == ("list_methodologies", {})
+    assert workspace.calls[4:10] == [
+        ("list_apps", {"customer_id": "customer-1"}),
+        ("get_app", {"customer_id": "customer-1", "app_id": "app-1"}),
+        (
+            "receive_app_events",
+            {
+                "customer_id": "customer-1",
+                "app_id": "app-1",
+                "from_sequence": 1,
+                "wait_ms": 0,
+            },
+        ),
+        ("list_builds", {"customer_id": "customer-1"}),
+        ("get_build", {"customer_id": "customer-1", "build_id": "build-1"}),
+        (
+            "receive_build_events",
+            {
+                "customer_id": "customer-1",
+                "build_id": "build-1",
+                "from_sequence": 1,
+                "wait_ms": 0,
+            },
+        ),
+    ]
+    assert workspace.calls[10] == ("list_methodologies", {})
 
 
 def test_get_solution_is_authoritative_over_the_list_entry():
@@ -217,6 +319,11 @@ def test_a_good_proposal_has_no_defects():
 
 def test_a_good_solution_proposal_has_no_defects():
     assert main.defects(proposal(solution=solution_binding()), FACTS) == []
+
+
+def test_a_good_app_proposal_has_no_defects():
+    access = app_capabilities()
+    assert main.defects(proposal(app_capabilities=access, files=app_files(access)), FACTS) == []
 
 
 def test_every_rule_catches_its_defect():
@@ -269,6 +376,40 @@ def test_every_rule_catches_its_defect():
         "must stay approval-gated": proposal(
             solution=solution_binding(approval_gates=[]),
         ),
+        "requires a python agent": proposal(
+            type="native",
+            storage="",
+            files=[],
+            app_capabilities=app_capabilities(),
+        ),
+        "outside this turn's grant": proposal(
+            app_capabilities=app_capabilities(reads=["list_apps", "create_app"]),
+        ),
+        "does not name a live app": proposal(
+            app_capabilities=app_capabilities(subscriptions=["app-events.app-99"]),
+        ),
+        "requires list_builds": proposal(
+            app_capabilities=app_capabilities(
+                reads=["receive_build_events"],
+                subscriptions=["build-events.*"],
+            ),
+        ),
+        "app proposals outside": proposal(
+            app_capabilities=app_capabilities(proposals=["publish_app_event"]),
+        ),
+        "agent-application": proposal(
+            app_capabilities=app_capabilities(
+                application_agent={"agent": "agent-project", "kind": "project"},
+            ),
+        ),
+        "one agent.toml": proposal(
+            app_capabilities=app_capabilities(),
+            files=[],
+        ),
+        "agent.toml tools must exactly match": proposal(
+            app_capabilities=app_capabilities(),
+            files=[{"path": "agent.toml", "contents": 'tools = ["list_apps"]\n'}],
+        ),
     }
     for expected, answer in cases.items():
         assert any(expected in problem for problem in main.defects(answer, FACTS)), expected
@@ -290,6 +431,7 @@ def context(*replies, history=None, workspace=None, message="an agent that flags
                            input={"message": message, "history": history or [],
                                   "customer_id": "customer-1"},
                            client=Scripted(*replies), model="gpt-5.5",
+                           app_capabilities=workspace.app_capabilities,
                            call_tool=workspace.call_tool)
 
 
@@ -338,6 +480,39 @@ def test_a_runnable_solution_is_bound_with_live_autonomy_and_capabilities():
         ("list_solutions", {}),
         ("get_solution", {"solution": "S-1"}),
     ]
+
+
+def test_an_app_agent_uses_reads_topics_and_proposal_only_actions():
+    access = app_capabilities()
+    watching = proposal(app_capabilities=access, files=app_files(access))
+    workspace = Workspace()
+
+    answered = main.run(context(
+        json.dumps(watching),
+        workspace=workspace,
+        message="Alert me when checkout crash-loops or its build fails, and propose a rebuild.",
+    ))
+
+    access = answered["result"]["proposal"]["app_capabilities"]
+    assert access["reads"] == main.APP_READ_CAPABILITIES
+    assert access["subscriptions"] == ["app-events.app-1", "build-events.*"]
+    assert access["proposals"] == ["build_app", "restart_app"]
+    assert access["application_agent"] == main.APP_DELEGATION
+    assert answered["result"]["defects"] == []
+
+
+def test_app_capabilities_are_not_clean_when_lake_reads_are_unavailable():
+    facts = main.workspace_facts(Workspace(app_error="unknown_capability: list_apps"))
+
+    access = app_capabilities()
+    problems = main.defects(
+        proposal(app_capabilities=access, files=app_files(access)),
+        facts,
+    )
+
+    assert facts["app_source"] == "unavailable"
+    assert "unknown_capability" in facts["app_error"]
+    assert any("app and build capabilities are unavailable" in problem for problem in problems)
 
 
 def test_an_unrunnable_solution_is_declined_with_its_issue():
@@ -488,13 +663,54 @@ def test_live_eval_reads_through_lakes_workspace_query(monkeypatch):
     workspace.client.close()
 
 
+def test_live_eval_reads_apps_and_builds_through_lake_capabilities(monkeypatch):
+    sent = []
+
+    def answer(request):
+        sent.append((request.method, request.url.path, dict(request.url.params)))
+        return httpx.Response(200, json={"ok": True, "value": {"events": [],
+                                                                "next_sequence": 1}})
+
+    monkeypatch.setenv("LAKE_URL", "https://lake.example")
+    monkeypatch.setenv("LAKE_TOKEN", "test-token")
+    monkeypatch.setenv("CUSTOMER_ID", "customer-1")
+    workspace = eval_run.LiveWorkspace(httpx.MockTransport(answer))
+
+    events = workspace.call_tool("receive_app_events", {
+        "app_id": "app-1",
+        "from_sequence": 7,
+        "wait_ms": 0,
+    })
+
+    assert events.ok
+    assert sent == [
+        (
+            "GET",
+            "/v1/receive_app_events",
+            {
+                "customer_id": "customer-1",
+                "app_id": "app-1",
+                "from_sequence": "7",
+                "wait_ms": "0",
+            },
+        ),
+    ]
+    workspace.client.close()
+
+
 def test_generated_evals_cover_runnable_unavailable_and_missing_solutions():
-    current = list(eval_run.generated([M1, M7], [S1, S5]))
+    current = list(eval_run.generated(
+        [M1, M7],
+        [S1, S5],
+        apps=[APP],
+        app_source=main.APP_FACT_SOURCE,
+    ))
     older = list(eval_run.generated([M1], [], "not_deployed"))
 
     current_ids = {case["id"] for case in current}
     assert "solution-S-1-runnable" in current_ids
     assert "solution-S-5-unsupported" in current_ids
+    assert "app-app-1-watch-and-propose" in current_ids
     assert any(case["id"] == "solution-registry-not-deployed" for case in older)
 
 
