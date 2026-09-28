@@ -17,7 +17,7 @@ program of its own:
 definition/
   record.json      its AgentRecord: kind orama, skills search + summarize (the reads it needs)
   agent.toml       entrypoint agent.main:run, model gpt-5.5, dependencies openai
-  instructions.md  the prompt (v3)
+  instructions.md  the prompt (v4)
   agent/main.py    the turn: read the workspace, ask, decline or propose, then check the answer
 ```
 
@@ -30,6 +30,9 @@ lake key and space, so what it reads is what they may read.
 `agent/main.py`'s `defects` is the review, run before the person sees anything; a proposal that
 fails gets one repair round and is otherwise returned **with** its defects, never as clean:
 
+- an App agent is Python, grants only the lake App/build reads it needs, subscribes to live
+  `app-events.<app-id>` / `build-events.*`, and can only propose mutations for confirmation and an
+  `app` turn to ApplicationAgent;
 - a solution-bound agent uses one runnable entry from the turn's live `list_solutions` /
   `get_solution` reads, carries its exact autonomy defaults, approval-gates every A1 action, and
   gets `decide`, `list_ledger`, `get_monitor` and `get_roi_readout` but not `approve_decision`;
@@ -47,10 +50,10 @@ fails gets one repair round and is otherwise returned **with** its defects, neve
 ## Evals
 
 `evals/run.py` generates asks from Studio's skills × work areas × with/without code, then adds live
-runnable and unsupported methodology and solution cases. It runs them against a real workspace and
-grades by rule: `defects` must be empty, ordinary asks must be proposals, live dependencies and
-solution bindings must be recorded, unsupported work must be declined with the engine's issue, the
-named skill must be granted, and an ask that needs code must not get a native agent. Reports land in
+App/build, methodology and solution cases. It runs them against a real workspace and grades by
+rule: `defects` must be empty, ordinary asks must be proposals, App grants and live dependencies
+must be recorded, unsupported work must be declined with the engine's issue, the named skill must
+be granted, and an ask that needs code must not get a native agent. Reports land in
 [`reports/`](reports/); no score is claimed that the runner did not produce.
 
 ```sh
@@ -71,10 +74,20 @@ buildctl ... build --frontend dockerfile.v0 --local context=. --local dockerfile
 
 ## Tests
 
-`uv run pytest`: the facts are live solution details and approved Pipelines, a good proposal is
-clean, every rule catches its defect, runnable and unsupported solutions and methodologies, both
-old-engine paths, one repair round, a twice-defective proposal keeps its defects, and a question is
-an answer.
+`uv run pytest`: the facts are live Apps, builds, retained events, solution details and approved
+Pipelines; a good proposal is clean; every rule catches its defect; and the suite covers runnable
+and unsupported solutions and methodologies, both old-engine paths, one repair round, a
+twice-defective proposal and questions.
+
+## Apps and builds
+
+AgentCreator reads `list_apps`, `get_app`, `receive_app_events`, `list_builds`, `get_build` and
+`receive_build_events` through the person's lake grant on every turn. An App proposal declares its
+read capabilities and event topics separately from proposal tools and writes their exact combined
+allow-list to `agent.toml`. agent-runtime records a proposal tool's input but never calls its
+mutation route; after the person confirms, lake delegates an `app` turn to
+`agent-application`, which builds and changes Apps through its own confirmation flow. The complete
+fact, topic, input and proposal contract is in [`docs/apps/`](docs/apps/README.md).
 
 ## Methodology availability
 
