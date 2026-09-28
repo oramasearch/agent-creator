@@ -3,9 +3,10 @@
 **AgentCreator**, the agent behind lake's **Agent Factory** ([lake#228](https://github.com/oramasearch/lake/issues/228),
 [zetta#1017](https://github.com/oramasearch/zetta/issues/1017), [lake#233](https://github.com/oramasearch/lake/issues/233)),
 and an entry of the Agent Library. A person tells it what they want an agent for; it asks what it
-must (one question at a time) and then proposes the agent in Studio's shape: native or Python, and
-for Python whether its code is stored in Zetta or a lake repository. **It creates nothing**: lake
-shows the proposal and creates the agent only when the person approves it.
+must (one question at a time), declines work the workspace engine cannot run, or proposes the agent
+in Studio's shape: native or Python, and for Python whether its code is stored in Zetta or a lake
+repository. **It creates nothing**: lake shows the proposal and creates the agent only when the
+person approves it.
 
 ## How it runs
 
@@ -16,8 +17,8 @@ program of its own:
 definition/
   record.json      its AgentRecord: kind orama, skills search + summarize (the reads it needs)
   agent.toml       entrypoint agent.main:run, model gpt-5.5, dependencies openai
-  instructions.md  the prompt (v1)
-  agent/main.py    the turn: read the workspace, ask or propose, check the proposal
+  instructions.md  the prompt (v2)
+  agent/main.py    the turn: read the workspace, ask, decline or propose, then check the answer
 ```
 
 The image `oramasearch/agent-creator` is `oramasearch/agent-runtime` plus `definition/`, served
@@ -31,7 +32,10 @@ fails gets one repair round and is otherwise returned **with** its defects, neve
 
 - skills only from Studio's set (`search`, `generate-data`, `train`, `summarize`, `call-api`);
 - work area `workspace`, `project` or `dataset`;
-- Pipelines only from the workspace's **approved** ones (read live: `list_projects`, `get_project`);
+- methodology dependencies only from the workspace's live `list_methodologies` response and only
+  when `runnable: true`; unsupported work is declined with its methodology and tracking issue;
+- Pipelines only from the workspace's **approved, runnable** ones (read live: `list_projects`,
+  `get_project`), with the Pipeline's methodology recorded on the proposal;
 - a native agent carries no code; a Python agent is stored in `zetta` or `lake`, and in `lake` when
   its code is larger than inline storage allows;
 - code compiles, imports only the standard library and the runtime's packages, stays inside the
@@ -39,11 +43,13 @@ fails gets one repair round and is otherwise returned **with** its defects, neve
 
 ## Evals
 
-`evals/run.py` generates asks from Studio's skills × work areas × with/without code (16 cases),
-runs them live against a real workspace, and grades by rule: `defects` must be empty, the answer
-must be a proposal, the named skill must be granted, and an ask that needs code must not get a
-native agent. Reports land in [`reports/`](reports/); no score is claimed that the runner did not
-produce.
+`evals/run.py` generates asks from Studio's skills × work areas × with/without code, then adds one
+case from the live runnable methodologies and one from the live unsupported methodologies. It runs
+them against a real workspace and grades by rule: `defects` must be empty, ordinary asks must be
+proposals, methodology-dependent proposals must record their dependency, unsupported work must be
+declined with the engine's issue, the named skill must be granted, and an ask that needs code must
+not get a native agent. Reports land in [`reports/`](reports/); no score is claimed that the runner
+did not produce.
 
 ```sh
 LAKE_URL=https://lake.oramadev.net LAKE_TOKEN=<a person's token> CUSTOMER_ID=<their space> \
@@ -64,8 +70,20 @@ buildctl ... build --frontend dockerfile.v0 --local context=. --local dockerfile
 ## Tests
 
 `uv run pytest`: the facts are only approved Pipelines, a good proposal is clean, every rule
-catches its defect, one repair round, a twice-defective proposal keeps its defects, and a question
-is an answer.
+catches its defect, runnable and unsupported methodologies, the old-engine M-1 fallback, one repair
+round, a twice-defective proposal keeps its defects, and a question is an answer.
+
+## Methodology availability
+
+AgentCreator reads `list_methodologies` first on every turn. The response is turn-scoped: it never
+carries a local copy of the 21-method portfolio, because methods become runnable as the engine
+gains implementations. A proposal records its methodology ids in `proposal.methodologies`; a
+method with `runnable: false` produces a structured decline that names the registry's issue.
+
+An older engine answers `unknown_capability`. Only in that state AgentCreator uses the compatibility
+contract that M-1 (churn / GBDT classification) runs and says that every other methodology is
+unavailable. The full behavior and response shapes are in
+[`docs/methodologies/`](docs/methodologies/README.md).
 
 ## Known failures and limits
 
@@ -77,6 +95,7 @@ is an answer.
 
 ## Its answer
 
-`run` answers `{"reply": <words>, "result": {kind, question | proposal, defects, facts}}`: the
-question, or the proposal in one sentence, for a person; the structured answer for lake's Factory
-page and API callers (agent-creator#1). It needs an agent-runtime that returns `result`.
+`run` answers `{"reply": <words>, "result": {kind, question | decline | proposal, defects,
+facts}}`: the question, decline, or proposal in one sentence for a person; the structured answer
+for lake's Factory page and API callers (agent-creator#1). It needs an agent-runtime that returns
+`result`.

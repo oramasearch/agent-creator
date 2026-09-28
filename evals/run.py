@@ -35,7 +35,7 @@ AREAS = {"workspace": "anywhere in this workspace", "project": "only in the chur
 CODE_ASKS = {False: "", True: " It needs a small helper that formats results as a table."}
 
 
-def generated():
+def generated(methodologies=None):
     for (skill, ask), (area, where), (code, extra) in itertools.product(
             SKILL_ASKS.items(), AREAS.items(), CODE_ASKS.items()):
         if code and skill in {"call-api", "generate-data"}:
@@ -44,18 +44,53 @@ def generated():
                "needs_code": code,
                "message": f"I want an agent that {ask}, working {where}.{extra} Propose it now; "
                           "do not ask me anything."}
+    methods = [item for item in methodologies or [] if isinstance(item, dict)]
+    runnable = next((item for item in methods if item.get("runnable") is True), None)
+    unsupported = next((item for item in methods if item.get("runnable") is not True), None)
+    if runnable:
+        identifier = runnable.get("id")
+        yield {
+            "id": f"methodology-{identifier}-runnable",
+            "expected_kind": "proposal",
+            "expected_methodology": identifier,
+            "message": f"Propose an agent whose job uses {runnable.get('name')} "
+                       f"({identifier}). Do not ask me anything.",
+        }
+    if unsupported:
+        identifier = unsupported.get("id")
+        yield {
+            "id": f"methodology-{identifier}-unsupported",
+            "expected_kind": "decline",
+            "expected_methodology": identifier,
+            "expected_issue": unsupported.get("issue"),
+            "message": f"Propose an agent whose job uses {unsupported.get('name')} "
+                       f"({identifier}). Do not substitute another methodology and do not ask me "
+                       "anything.",
+        }
 
 
 class LiveWorkspace:
-    def __init__(self) -> None:
-        base = os.environ["LAKE_URL"].rstrip("/") + f"/workspaces/{os.environ['CUSTOMER_ID']}/zetta"
-        self.client = httpx.Client(base_url=base, timeout=60, headers={
-            "Authorization": f"Bearer {os.environ['LAKE_TOKEN']}"})
+    def __init__(self, transport: httpx.BaseTransport | None = None) -> None:
+        self.customer_id = os.environ["CUSTOMER_ID"]
+        self.client = httpx.Client(
+            base_url=os.environ["LAKE_URL"].rstrip("/"),
+            timeout=60,
+            headers={"Authorization": f"Bearer {os.environ['LAKE_TOKEN']}"},
+            transport=transport,
+        )
 
     def call_tool(self, name, arguments):
-        response = self.client.get(f"/v1/{name}", params=arguments)
+        response = self.client.post("/v1/workspace_query", json={
+            "customer_id": self.customer_id,
+            "capability": name,
+            "input": arguments,
+        })
         body = response.json() if response.content else {}
-        return SimpleNamespace(ok=bool(body.get("ok")), value=body.get("value"))
+        error = body.get("error") if isinstance(body, dict) else None
+        if isinstance(error, dict):
+            error = f"{error.get('code', response.status_code)}: {error.get('message', '')}"
+        return SimpleNamespace(ok=bool(body.get("ok")), value=body.get("value"),
+                               error=error or "")
 
 
 def main_eval() -> int:
@@ -63,21 +98,40 @@ def main_eval() -> int:
     instructions = (Path(__file__).resolve().parent.parent / "definition" /
                     "instructions.md").read_text()
     client, model = OpenAI(), os.environ.get("AGENT_MODEL", "gpt-5.5")
+    fact_context = SimpleNamespace(input={"customer_id": workspace.customer_id},
+                                   call_tool=workspace.call_tool)
+    methodology_snapshot = main.methodology_facts(fact_context)
     rows = []
-    for case in generated():
+    for case in generated(methodology_snapshot["methodologies"]):
         context = SimpleNamespace(agent=SimpleNamespace(instructions=instructions),
-                                  input={"message": case["message"], "history": []},
+                                  input={"message": case["message"], "history": [],
+                                         "customer_id": workspace.customer_id},
                                   client=client, model=model, call_tool=workspace.call_tool)
-        answer = main.run(context)["result"]
+        turn = main.run(context)
+        answer = turn["result"]
         reasons = list(answer.get("defects") or [])
         proposal = answer.get("proposal") or {}
-        if answer.get("kind") != "proposal":
-            reasons.append("asked instead of proposing")
-        elif case["skill"] not in ((proposal.get("agent") or {}).get("skills") or []):
-            reasons.append(f"did not grant {case['skill']}")
-        if case["needs_code"] and proposal.get("type") == "native":
+        expected_kind = case.get("expected_kind", "proposal")
+        if answer.get("kind") != expected_kind:
+            reasons.append(f"answered {answer.get('kind')} instead of {expected_kind}")
+        if case.get("skill") and answer.get("kind") == "proposal":
+            skills = (proposal.get("agent") or {}).get("skills") or []
+            if case["skill"] not in skills:
+                reasons.append(f"did not grant {case['skill']}")
+        if case.get("needs_code") and proposal.get("type") == "native":
             reasons.append("code was asked for; a native agent carries none")
-        rows.append({"case": case, "passed": not reasons, "reasons": reasons, "answer": answer})
+        methodology = case.get("expected_methodology")
+        if methodology and answer.get("kind") == "proposal":
+            if methodology not in (proposal.get("methodologies") or []):
+                reasons.append(f"did not record {methodology}")
+        if methodology and answer.get("kind") == "decline":
+            if answer.get("methodology") != methodology:
+                reasons.append(f"declined {answer.get('methodology')} instead of {methodology}")
+            issue = case.get("expected_issue")
+            if issue and issue not in json.dumps(answer):
+                reasons.append(f"did not name {issue}")
+        rows.append({"case": case, "passed": not reasons, "reasons": reasons, "answer": answer,
+                     "reply": turn["reply"]})
     passed = sum(row["passed"] for row in rows)
     out = Path(__file__).resolve().parent.parent / "reports"
     out.mkdir(exist_ok=True)
