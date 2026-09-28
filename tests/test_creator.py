@@ -89,17 +89,23 @@ def context(*replies, history=None):
 
 def test_a_defective_proposal_gets_one_repair_round():
     bad = proposal(pipelines=[{"project": "draft", "graph": "idea"}])
-    answer = json.loads(main.run(context(json.dumps(bad), json.dumps(proposal()))))
+    answered = main.run(context(json.dumps(bad), json.dumps(proposal())))
+    answer = answered["result"]
     assert answer["kind"] == "proposal" and answer["defects"] == []
+    assert answered["reply"].startswith("I propose an agent named Renewal watcher: Flag renewals.")
 
 
 def test_a_proposal_that_fails_twice_is_returned_with_its_defects():
     bad = json.dumps(proposal(storage="s3"))
-    answer = json.loads(main.run(context(bad, bad)))
+    answered = main.run(context(bad, bad))
+    answer = answered["result"]
+    assert "still has problems" in answered["reply"]
     assert answer["defects"], "the person is never shown a proposal as clean when it is not"
 
 
 def test_a_question_is_an_answer():
-    answer = json.loads(main.run(context(json.dumps({"kind": "question",
-                                                     "question": "Which accounts count?"}))))
+    answered = main.run(context(json.dumps({"kind": "question",
+                                            "question": "Which accounts count?"})))
+    answer = answered["result"]
     assert answer["kind"] == "question" and not answer["defects"]
+    assert answered["reply"] == "Which accounts count?", "a person reads words, not JSON"

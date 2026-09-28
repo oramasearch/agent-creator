@@ -68,7 +68,7 @@ def main_eval() -> int:
         context = SimpleNamespace(agent=SimpleNamespace(instructions=instructions),
                                   input={"message": case["message"], "history": []},
                                   client=client, model=model, call_tool=workspace.call_tool)
-        answer = json.loads(main.run(context))
+        answer = main.run(context)["result"]
         reasons = list(answer.get("defects") or [])
         proposal = answer.get("proposal") or {}
         if answer.get("kind") != "proposal":

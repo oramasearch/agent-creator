@@ -73,3 +73,10 @@ is an answer.
   new skill in agent-runtime first.
 - It checks that Python compiles, not that it does the right thing: lake's check job after
   creation (lake#233) is where a new agent first runs.
+
+
+## Its answer
+
+`run` answers `{"reply": <words>, "result": {kind, question | proposal, defects, facts}}`: the
+question, or the proposal in one sentence, for a person; the structured answer for lake's Factory
+page and API callers (agent-creator#1). It needs an agent-runtime that returns `result`.
