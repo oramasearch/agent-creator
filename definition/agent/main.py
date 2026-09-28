@@ -1,4 +1,4 @@
-"""AgentCreator's turn (zetta#1017): read the workspace, ask or propose, check the proposal.
+"""AgentCreator's turn: read the workspace, then ask, decline or propose and check the answer.
 
 It proposes and never creates: lake's Agent Factory shows the proposal and creates the agent only
 on the person's approval (lake#233). Everything it may put in a proposal is checked here, by rules,
@@ -19,11 +19,77 @@ RUNTIME_PACKAGES = {"openai", "httpx", "pydantic", "pandas", "numpy"}
 INLINE_LIMIT = 900 * 1024
 SECRET = re.compile(r"(sk-[A-Za-z0-9_\-]{16,}|ghp_[A-Za-z0-9]{20,}|(password|secret|token)\s*=\s*"
                     r"['\"][^'\"]{6,}['\"])", re.I)
+LEGACY_METHODOLOGY = {
+    "id": "M-1",
+    "name": "Churn / GBDT classification",
+    "family": "classification",
+    "model_kinds": ["gbdt"],
+    "solutions": [],
+    "inputs": [],
+    "outputs": [],
+    "metrics": [],
+    "runnable": True,
+    "partial": False,
+}
+
+
+def _tool_error(reply: Any) -> str:
+    """A failed runtime tool's error, including the capability code when it returned one."""
+    error = getattr(reply, "error", "")
+    if isinstance(error, dict):
+        return f"{error.get('code', '')}: {error.get('message', '')}".strip(": ")
+    if error:
+        return str(error)
+    value = getattr(reply, "value", None)
+    if isinstance(value, dict):
+        nested = value.get("error")
+        if isinstance(nested, dict):
+            return f"{nested.get('code', '')}: {nested.get('message', '')}".strip(": ")
+        if value.get("code"):
+            return str(value["code"])
+    return "workspace capability failed"
+
+
+def methodology_facts(context) -> dict[str, Any]:
+    """The live registry for this turn, or the documented old-engine M-1 fallback."""
+    listed = context.call_tool("list_methodologies", {})
+    if listed.ok and isinstance(listed.value, dict):
+        methods = listed.value.get("methodologies")
+        if isinstance(methods, list):
+            return {
+                "methodologies": [item for item in methods if isinstance(item, dict)],
+                "methodology_source": "list_methodologies",
+                "methodology_error": "",
+            }
+        return {
+            "methodologies": [],
+            "methodology_source": "unavailable",
+            "methodology_error": "list_methodologies returned no methodologies list",
+        }
+
+    error = _tool_error(listed)
+    if "unknown_capability" in error:
+        return {
+            "methodologies": [dict(LEGACY_METHODOLOGY)],
+            "methodology_source": "old-engine fallback",
+            "methodology_error": "list_methodologies is unknown; only M-1 runs",
+        }
+    return {
+        "methodologies": [],
+        "methodology_source": "unavailable",
+        "methodology_error": error,
+    }
 
 
 def workspace_facts(context) -> dict[str, Any]:
     """What exists: the datasets, and every approved Pipeline, read through the person's key."""
-    facts: dict[str, Any] = {"datasets": [], "pipelines": []}
+    # This is deliberately first. Methodology availability changes as the engine gains runners.
+    facts: dict[str, Any] = {
+        **methodology_facts(context),
+        "datasets": [],
+        "pipelines": [],
+        "unrunnable_pipelines": [],
+    }
     datasets = context.call_tool("list_datasets", {})
     if datasets.ok and isinstance(datasets.value, dict):
         for item in datasets.value.get("datasets", []):
@@ -31,23 +97,124 @@ def workspace_facts(context) -> dict[str, Any]:
     projects = context.call_tool("list_projects", {})
     names = projects.value.get("projects", []) if projects.ok and isinstance(projects.value,
                                                                               dict) else []
+    methods = {item.get("id"): item for item in facts["methodologies"]}
     for name in names:
         name = name if isinstance(name, str) else (name or {}).get("name", "")
         got = context.call_tool("get_project", {"name": name})
         if not got.ok or not isinstance(got.value, dict):
             continue
         for graph in got.value.get("graphs", []):
-            if graph.get("approval") == "approved":
-                facts["pipelines"].append({"project": name, "graph": graph.get("name", "")})
+            if graph.get("approval") != "approved":
+                continue
+            pipeline = {"project": name, "graph": graph.get("name", "")}
+            methodology = graph.get("methodology")
+            if methodology:
+                pipeline["methodology"] = methodology
+            if "runnable" in graph:
+                pipeline["runnable"] = graph.get("runnable") is True
+            method = methods.get(methodology)
+            runnable = graph.get("runnable") is not False
+            if methodology:
+                runnable = runnable and method is not None and method.get("runnable") is True
+                if method is not None and method.get("issue"):
+                    pipeline["issue"] = method["issue"]
+            elif facts["methodology_source"] == "list_methodologies":
+                runnable = False
+            if runnable:
+                facts["pipelines"].append(pipeline)
+            else:
+                facts["unrunnable_pipelines"].append(pipeline)
     return facts
+
+
+def _methodology_map(facts: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        item.get("id"): item
+        for item in facts.get("methodologies", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+
+
+def _decline_defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
+    methodology = answer.get("methodology")
+    reason = str(answer.get("reason") or "")
+    issue = str(answer.get("issue") or "")
+    methods = _methodology_map(facts)
+    method = methods.get(methodology)
+    problems: list[str] = []
+
+    if not methodology:
+        problems.append("a decline must name the methodology the job needs")
+    if facts.get("methodology_source") == "old-engine fallback":
+        if methodology == "M-1":
+            problems.append("M-1 is runnable on this older workspace engine")
+        if "only M-1" not in reason:
+            problems.append("an old-engine decline must say that only M-1 runs")
+        return problems
+    if method is None:
+        problems.append(f"methodology {methodology} is not in list_methodologies")
+        return problems
+    if method.get("runnable") is True:
+        problems.append(f"methodology {methodology} is runnable and must not be declined")
+    expected_issue = str(method.get("issue") or "")
+    if expected_issue and expected_issue not in issue and expected_issue not in reason:
+        problems.append(f"the decline must name {expected_issue}")
+    return problems
+
+
+def _proposal_methodology_defects(proposal: dict[str, Any], agent: dict[str, Any],
+                                  facts: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """Return the declared dependencies and every availability problem they carry."""
+    dependencies = proposal.get("methodologies")
+    problems: list[str] = []
+    if not isinstance(dependencies, list):
+        problems.append("methodologies must be a list (empty when the agent needs none)")
+        dependencies = []
+    elif any(not isinstance(item, str) for item in dependencies):
+        problems.append("methodologies must contain methodology ids")
+        dependencies = [item for item in dependencies if isinstance(item, str)]
+
+    methods = _methodology_map(facts)
+    for methodology in dependencies:
+        method = methods.get(methodology)
+        if method is None:
+            problems.append(f"methodology {methodology} is not in list_methodologies")
+        elif method.get("runnable") is not True:
+            suffix = f" ({method.get('issue')})" if method.get("issue") else ""
+            problems.append(f"methodology {methodology} is not runnable{suffix}")
+    if "train" in (agent.get("skills") or []) and not dependencies:
+        problems.append("an agent that trains or runs models must record its methodology")
+    return dependencies, problems
+
+
+def _pipeline_defects(proposal: dict[str, Any], facts: dict[str, Any],
+                      dependencies: list[str]) -> list[str]:
+    """Check every Pipeline grant and its methodology dependency."""
+    problems: list[str] = []
+    approved = {(item["project"], item["graph"]): item
+                for item in facts.get("pipelines", [])}
+    for grant in proposal.get("pipelines") or []:
+        key = (grant.get("project"), grant.get("graph"))
+        pipeline = approved.get(key)
+        if pipeline is None:
+            problems.append(f"Pipeline {grant.get('graph')} in {grant.get('project')} is not an "
+                            "approved runnable Pipeline of this workspace")
+            continue
+        methodology = pipeline.get("methodology")
+        if methodology and methodology not in dependencies:
+            problems.append(f"Pipeline {grant.get('graph')} depends on {methodology}; record it "
+                            "in methodologies")
+    return problems
 
 
 def defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
     """Everything wrong with an answer. Empty means it may be shown to the person."""
     if answer.get("kind") == "question":
         return [] if (answer.get("question") or "").strip() else ["an empty question"]
+    if answer.get("kind") == "decline":
+        return _decline_defects(answer, facts)
     if answer.get("kind") != "proposal":
-        return ["the answer is neither a question nor a proposal"]
+        return ["the answer is not a question, decline or proposal"]
     proposal = answer.get("proposal") or {}
     agent = proposal.get("agent") or {}
     problems: list[str] = []
@@ -60,11 +227,9 @@ def defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
         problems.append(f"skills that do not exist: {sorted(unknown)}")
     if (agent.get("work_area") or {}).get("kind", "workspace") not in WORK_AREAS:
         problems.append("work_area.kind must be workspace, project or dataset")
-    approved = {(p["project"], p["graph"]) for p in facts.get("pipelines", [])}
-    for grant in proposal.get("pipelines") or []:
-        if (grant.get("project"), grant.get("graph")) not in approved:
-            problems.append(f"Pipeline {grant.get('graph')} in {grant.get('project')} is not an "
-                            "approved Pipeline of this workspace")
+    dependencies, methodology_problems = _proposal_methodology_defects(proposal, agent, facts)
+    problems.extend(methodology_problems)
+    problems.extend(_pipeline_defects(proposal, facts, dependencies))
     files = proposal.get("files") or []
     if proposal.get("type") == "native" and files:
         problems.append("a native agent carries no code")
@@ -124,6 +289,16 @@ def words(answer: dict[str, Any], problems: list[str]) -> str:
     """What a person reads: the question, or the proposal in one sentence (agent-creator#1)."""
     if answer.get("kind") == "question":
         return (answer.get("question") or "").strip()
+    if answer.get("kind") == "decline":
+        methodology = answer.get("methodology") or "the needed methodology"
+        reason = str(answer.get("reason") or "is not runnable in this workspace").rstrip(".")
+        issue = answer.get("issue")
+        text = f"I cannot propose this agent because it needs {methodology}: {reason}."
+        if issue and str(issue) not in reason:
+            text += f" The engine tracks this as {issue}."
+        if problems:
+            text += " It still has problems: " + "; ".join(problems) + "."
+        return text
     agent = (answer.get("proposal") or {}).get("agent") or {}
     if answer.get("kind") == "proposal":
         purpose = (agent.get("purpose") or "").strip()
@@ -138,7 +313,13 @@ def run(context) -> dict[str, Any]:
     facts = workspace_facts(context)
     system = (context.agent.instructions
               + "\n\n## This workspace\n\nDatasets: " + json.dumps(facts["datasets"])
-              + "\n\nApproved Pipelines you may grant: " + json.dumps(facts["pipelines"]))
+              + "\n\nMethodology source: " + facts["methodology_source"]
+              + "\n\nMethodologies: " + json.dumps(facts["methodologies"])
+              + "\n\nMethodology read error: " + json.dumps(facts["methodology_error"])
+              + "\n\nApproved runnable Pipelines you may grant: "
+              + json.dumps(facts["pipelines"])
+              + "\n\nApproved Pipelines that are not runnable: "
+              + json.dumps(facts["unrunnable_pipelines"]))
     messages = [{"role": "system", "content": system}]
     for earlier in context.input.get("history") or []:
         if earlier.get("role") in {"user", "assistant"}:
