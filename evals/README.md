@@ -1,6 +1,6 @@
 # AgentCreator eval runner
 
-`run.py` keeps the generated Studio skill/work-area/code matrix and adds live methodology cases.
-It selects one runnable and one unsupported entry from `list_methodologies`, then verifies that the
-runnable proposal records its dependency and the unsupported answer declines with the registry's
-issue. Workspace reads use lake's `workspace_query` envelope.
+`run.py` keeps the generated Studio skill/work-area/code matrix and adds live methodology and
+solution cases. It selects runnable and unsupported registry entries, then verifies proposal
+bindings or structured declines. An older engine gets a solution-registry-not-deployed case.
+Workspace reads use lake's `workspace_query` envelope.
