@@ -4,3 +4,5 @@ Dated eval reports from `evals/run.py`, run against a real workspace.
   methodology-aware cases. The one failure is left as produced: `train-workspace-plain` asked for a
   retraining agent over "our approved churn Pipeline", and AgentCreator read the workspace, found no
   approved Pipeline, and asked which one instead of inventing it.
+- Prompt v3 adds live solution bindings and solution-aware eval cases. No prompt-v3 live report is
+  recorded here; the existing report and score remain unchanged.

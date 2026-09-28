@@ -2,8 +2,9 @@
 
 It proposes and never creates: lake's Agent Factory shows the proposal and creates the agent only
 on the person's approval (lake#233). Everything it may put in a proposal is checked here, by rules,
-before the person sees it: skills from Studio's set, Pipelines that exist and are approved, code
-that compiles and imports only what the runtime ships, no secrets, and storage that fits the code.
+before the person sees it: solution authority from the live registry, skills from Studio's set,
+Pipelines that exist and are approved, code that compiles and imports only what the runtime ships,
+no secrets, and storage that fits the code.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from typing import Any
 SKILLS = {"search", "generate-data", "train", "summarize", "call-api"}
 WORK_AREAS = {"workspace", "project", "dataset"}
 RUNTIME_PACKAGES = {"openai", "httpx", "pydantic", "pandas", "numpy"}
+SOLUTION_CAPABILITIES = ["decide", "list_ledger", "get_monitor", "get_roi_readout"]
 INLINE_LIMIT = 900 * 1024
 SECRET = re.compile(r"(sk-[A-Za-z0-9_\-]{16,}|ghp_[A-Za-z0-9]{20,}|(password|secret|token)\s*=\s*"
                     r"['\"][^'\"]{6,}['\"])", re.I)
@@ -81,10 +83,63 @@ def methodology_facts(context) -> dict[str, Any]:
     }
 
 
+def solution_facts(context) -> dict[str, Any]:
+    """The live solution details for this turn, with no old-engine fallback."""
+    listed = context.call_tool("list_solutions", {})
+    if not listed.ok or not isinstance(listed.value, dict):
+        error = _tool_error(listed)
+        if "unknown_capability" in error:
+            return {
+                "solutions": [],
+                "solution_source": "not_deployed",
+                "solution_error": "list_solutions is not deployed yet in this workspace",
+            }
+        return {
+            "solutions": [],
+            "solution_source": "unavailable",
+            "solution_error": error,
+        }
+
+    summaries = listed.value.get("solutions")
+    if not isinstance(summaries, list):
+        return {
+            "solutions": [],
+            "solution_source": "unavailable",
+            "solution_error": "list_solutions returned no solutions list",
+        }
+
+    solutions: list[dict[str, Any]] = []
+    detail_errors: list[str] = []
+    for summary in summaries:
+        if not isinstance(summary, dict) or not summary.get("id"):
+            detail_errors.append("list_solutions returned an entry without an id")
+            continue
+        identifier = str(summary["id"])
+        got = context.call_tool("get_solution", {"solution": identifier})
+        if not got.ok or not isinstance(got.value, dict):
+            error = _tool_error(got)
+            if "unknown_capability" in error:
+                error = "get_solution is not deployed yet in this workspace"
+            detail_errors.append(f"get_solution {identifier}: {error}")
+            continue
+        solution = got.value.get("solution")
+        if not isinstance(solution, dict):
+            detail_errors.append(f"get_solution {identifier} returned no solution")
+            continue
+        solutions.append(solution)
+
+    return {
+        "solutions": solutions,
+        "solution_source": "list_solutions/get_solution",
+        "solution_error": "; ".join(detail_errors),
+    }
+
+
 def workspace_facts(context) -> dict[str, Any]:
     """What exists: the datasets, and every approved Pipeline, read through the person's key."""
-    # This is deliberately first. Methodology availability changes as the engine gains runners.
+    # These reads are deliberately turn-scoped. Engine registries change as implementations land.
     facts: dict[str, Any] = {
+        **solution_facts(context),
         **methodology_facts(context),
         "datasets": [],
         "pipelines": [],
@@ -135,7 +190,62 @@ def _methodology_map(facts: dict[str, Any]) -> dict[str, dict[str, Any]]:
     }
 
 
+def _solution_map(facts: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    return {
+        item.get("id"): item
+        for item in facts.get("solutions", [])
+        if isinstance(item, dict) and item.get("id")
+    }
+
+
+def _solution_decline_defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
+    identifier = str(answer.get("solution") or "")
+    reason = str(answer.get("reason") or "")
+    issue = str(answer.get("issue") or "")
+    problems: list[str] = []
+
+    if facts.get("solution_source") == "not_deployed":
+        if identifier != "solution registry":
+            problems.append(
+                "an old engine decline must name the solution registry, not a solution id"
+            )
+        if issue:
+            problems.append("an old engine decline cannot invent a solution issue")
+        if "not deployed yet" not in reason:
+            problems.append("an old engine decline must say list_solutions is not deployed yet")
+        return problems
+    if not identifier:
+        problems.append("a solution decline must name the solution the job needs")
+        return problems
+    solution = _solution_map(facts).get(identifier)
+    if solution is None:
+        problems.append(f"solution {identifier} is not in this turn's solution registry")
+        return problems
+    if solution.get("runnable") is True and solution.get("status") != "sketch":
+        problems.append(f"solution {identifier} is runnable and must not be declined")
+    expected_issue = str(solution.get("issue") or "")
+    if expected_issue and expected_issue not in issue and expected_issue not in reason:
+        problems.append(f"the decline must name {expected_issue}")
+    if solution.get("status") == "sketch":
+        condition = str(solution.get("promotion_condition") or "")
+        if condition and condition not in reason:
+            problems.append("a sketch decline must repeat its promotion condition")
+    return problems
+
+
+def _object_set(value: Any) -> set[str] | None:
+    """An order-independent, duplicate-free set of JSON objects."""
+    if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):
+        return None
+    encoded = [json.dumps(item, sort_keys=True) for item in value]
+    if len(set(encoded)) != len(encoded):
+        return None
+    return set(encoded)
+
+
 def _decline_defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
+    if "solution" in answer:
+        return _solution_decline_defects(answer, facts)
     methodology = answer.get("methodology")
     reason = str(answer.get("reason") or "")
     issue = str(answer.get("issue") or "")
@@ -159,6 +269,59 @@ def _decline_defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]
     expected_issue = str(method.get("issue") or "")
     if expected_issue and expected_issue not in issue and expected_issue not in reason:
         problems.append(f"the decline must name {expected_issue}")
+    return problems
+
+
+def _solution_proposal_defects(proposal: dict[str, Any], facts: dict[str, Any]) -> list[str]:
+    """Check a solution binding against the details read during this turn."""
+    binding = proposal.get("solution")
+    if binding is None:
+        return []
+    if not isinstance(binding, dict):
+        return ["solution must be an object with an id, capabilities, autonomy and approval_gates"]
+
+    identifier = binding.get("id")
+    solution = _solution_map(facts).get(identifier)
+    if solution is None:
+        return [f"solution {identifier} is not in this turn's solution registry"]
+
+    problems: list[str] = []
+    if solution.get("status") == "sketch":
+        problems.append(f"solution {identifier} is a sketch and cannot operate")
+    if solution.get("runnable") is not True:
+        suffix = f" ({solution.get('issue')})" if solution.get("issue") else ""
+        problems.append(f"solution {identifier} is not runnable{suffix}")
+
+    capabilities = binding.get("capabilities")
+    if (not isinstance(capabilities, list)
+            or any(not isinstance(item, str) for item in capabilities)
+            or len(capabilities) != len(SOLUTION_CAPABILITIES)
+            or set(capabilities) != set(SOLUTION_CAPABILITIES)):
+        problems.append(
+            "a solution agent's capabilities must be decide, list_ledger, get_monitor and "
+            "get_roi_readout"
+        )
+
+    expected_autonomy = solution.get("autonomy_defaults") or []
+    proposed_autonomy = binding.get("autonomy")
+    expected_autonomy_set = _object_set(expected_autonomy)
+    proposed_autonomy_set = _object_set(proposed_autonomy)
+    if (expected_autonomy_set is None
+            or proposed_autonomy_set is None
+            or proposed_autonomy_set != expected_autonomy_set):
+        problems.append("solution autonomy must exactly match this turn's autonomy defaults")
+
+    expected_gates = [
+        item.get("action_class")
+        for item in expected_autonomy
+        if isinstance(item, dict) and item.get("autonomy") == "A1"
+    ]
+    approval_gates = binding.get("approval_gates")
+    if (not isinstance(approval_gates, list)
+            or any(not isinstance(item, str) for item in approval_gates)
+            or len(approval_gates) != len(expected_gates)
+            or set(approval_gates) != set(expected_gates)):
+        problems.append("every A1 action class must stay approval-gated")
     return problems
 
 
@@ -229,6 +392,7 @@ def defects(answer: dict[str, Any], facts: dict[str, Any]) -> list[str]:
         problems.append("work_area.kind must be workspace, project or dataset")
     dependencies, methodology_problems = _proposal_methodology_defects(proposal, agent, facts)
     problems.extend(methodology_problems)
+    problems.extend(_solution_proposal_defects(proposal, facts))
     problems.extend(_pipeline_defects(proposal, facts, dependencies))
     files = proposal.get("files") or []
     if proposal.get("type") == "native" and files:
@@ -290,6 +454,16 @@ def words(answer: dict[str, Any], problems: list[str]) -> str:
     if answer.get("kind") == "question":
         return (answer.get("question") or "").strip()
     if answer.get("kind") == "decline":
+        if "solution" in answer:
+            solution = answer.get("solution") or "the solution registry"
+            reason = str(answer.get("reason") or "is not runnable in this workspace").rstrip(".")
+            issue = answer.get("issue")
+            text = f"I cannot propose this agent because {solution} {reason}."
+            if issue and str(issue) not in reason:
+                text += f" The engine tracks this as {issue}."
+            if problems:
+                text += " It still has problems: " + "; ".join(problems) + "."
+            return text
         methodology = answer.get("methodology") or "the needed methodology"
         reason = str(answer.get("reason") or "is not runnable in this workspace").rstrip(".")
         issue = answer.get("issue")
@@ -313,6 +487,9 @@ def run(context) -> dict[str, Any]:
     facts = workspace_facts(context)
     system = (context.agent.instructions
               + "\n\n## This workspace\n\nDatasets: " + json.dumps(facts["datasets"])
+              + "\n\nSolution source: " + facts["solution_source"]
+              + "\n\nSolutions: " + json.dumps(facts["solutions"])
+              + "\n\nSolution read error: " + json.dumps(facts["solution_error"])
               + "\n\nMethodology source: " + facts["methodology_source"]
               + "\n\nMethodologies: " + json.dumps(facts["methodologies"])
               + "\n\nMethodology read error: " + json.dumps(facts["methodology_error"])

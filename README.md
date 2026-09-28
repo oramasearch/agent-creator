@@ -17,7 +17,7 @@ program of its own:
 definition/
   record.json      its AgentRecord: kind orama, skills search + summarize (the reads it needs)
   agent.toml       entrypoint agent.main:run, model gpt-5.5, dependencies openai
-  instructions.md  the prompt (v2)
+  instructions.md  the prompt (v3)
   agent/main.py    the turn: read the workspace, ask, decline or propose, then check the answer
 ```
 
@@ -30,6 +30,9 @@ lake key and space, so what it reads is what they may read.
 `agent/main.py`'s `defects` is the review, run before the person sees anything; a proposal that
 fails gets one repair round and is otherwise returned **with** its defects, never as clean:
 
+- a solution-bound agent uses one runnable entry from the turn's live `list_solutions` /
+  `get_solution` reads, carries its exact autonomy defaults, approval-gates every A1 action, and
+  gets `decide`, `list_ledger`, `get_monitor` and `get_roi_readout` but not `approve_decision`;
 - skills only from Studio's set (`search`, `generate-data`, `train`, `summarize`, `call-api`);
 - work area `workspace`, `project` or `dataset`;
 - methodology dependencies only from the workspace's live `list_methodologies` response and only
@@ -43,13 +46,12 @@ fails gets one repair round and is otherwise returned **with** its defects, neve
 
 ## Evals
 
-`evals/run.py` generates asks from Studio's skills × work areas × with/without code, then adds one
-case from the live runnable methodologies and one from the live unsupported methodologies. It runs
-them against a real workspace and grades by rule: `defects` must be empty, ordinary asks must be
-proposals, methodology-dependent proposals must record their dependency, unsupported work must be
-declined with the engine's issue, the named skill must be granted, and an ask that needs code must
-not get a native agent. Reports land in [`reports/`](reports/); no score is claimed that the runner
-did not produce.
+`evals/run.py` generates asks from Studio's skills × work areas × with/without code, then adds live
+runnable and unsupported methodology and solution cases. It runs them against a real workspace and
+grades by rule: `defects` must be empty, ordinary asks must be proposals, live dependencies and
+solution bindings must be recorded, unsupported work must be declined with the engine's issue, the
+named skill must be granted, and an ask that needs code must not get a native agent. Reports land in
+[`reports/`](reports/); no score is claimed that the runner did not produce.
 
 ```sh
 LAKE_URL=https://lake.oramadev.net LAKE_TOKEN=<a person's token> CUSTOMER_ID=<their space> \
@@ -69,21 +71,32 @@ buildctl ... build --frontend dockerfile.v0 --local context=. --local dockerfile
 
 ## Tests
 
-`uv run pytest`: the facts are only approved Pipelines, a good proposal is clean, every rule
-catches its defect, runnable and unsupported methodologies, the old-engine M-1 fallback, one repair
-round, a twice-defective proposal keeps its defects, and a question is an answer.
+`uv run pytest`: the facts are live solution details and approved Pipelines, a good proposal is
+clean, every rule catches its defect, runnable and unsupported solutions and methodologies, both
+old-engine paths, one repair round, a twice-defective proposal keeps its defects, and a question is
+an answer.
 
 ## Methodology availability
 
-AgentCreator reads `list_methodologies` first on every turn. The response is turn-scoped: it never
-carries a local copy of the 21-method portfolio, because methods become runnable as the engine
-gains implementations. A proposal records its methodology ids in `proposal.methodologies`; a
-method with `runnable: false` produces a structured decline that names the registry's issue.
+AgentCreator reads `list_methodologies` on every turn. The response is turn-scoped: it never carries
+a local copy of the 21-method portfolio, because methods become runnable as the engine gains
+implementations. A proposal records its methodology ids in `proposal.methodologies`; a method with
+`runnable: false` produces a structured decline that names the registry's issue.
 
 An older engine answers `unknown_capability`. Only in that state AgentCreator uses the compatibility
 contract that M-1 (churn / GBDT classification) runs and says that every other methodology is
 unavailable. The full behavior and response shapes are in
 [`docs/methodologies/`](docs/methodologies/README.md).
+
+## Solution availability
+
+AgentCreator reads `list_solutions` and details every returned entry with `get_solution` on every
+turn. A business problem that matches a runnable catalogue entry gets one solution binding with
+the operating capabilities, exact autonomy defaults and explicit A1 approval gates. A matching
+entry that does not run is declined with its live issue; a sketch also names its promotion
+condition. An older engine's `unknown_capability` means the solution registry is not deployed yet
+and supplies no compatibility solution. The complete binding and refusal contract is in
+[`docs/solutions/`](docs/solutions/README.md).
 
 ## Known failures and limits
 
