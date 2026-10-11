@@ -326,6 +326,13 @@ def test_a_good_app_proposal_has_no_defects():
     assert main.defects(proposal(app_capabilities=access, files=app_files(access)), FACTS) == []
 
 
+def test_lakes_own_areas_are_skills():
+    agent = {**proposal()["proposal"]["agent"],
+             "skills": ["drives", "transcripts", "repositories", "datasets", "streams",
+                        "pipelines", "usage"]}
+    assert main.defects(proposal(agent=agent), FACTS) == []
+
+
 def test_every_rule_catches_its_defect():
     cases = {
         "skills that do not exist": proposal(agent={**proposal()["proposal"]["agent"],

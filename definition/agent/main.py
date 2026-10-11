@@ -3,7 +3,7 @@
 It proposes and never creates: lake's Agent Factory shows the proposal and creates the agent only
 on the person's approval (lake#233). Everything it may put in a proposal is checked here, by rules,
 before the person sees it: App and build authority from lake's live grant, solution authority from
-the live registry, skills from Studio's set, Pipelines that exist and are approved, code that
+the live registry, skills from the runtime's set, Pipelines that exist and are approved, code that
 compiles and imports only what the runtime ships, no secrets, and storage that fits the code.
 """
 
@@ -14,7 +14,11 @@ import re
 import tomllib
 from typing import Any
 
-SKILLS = {"search", "generate-data", "train", "summarize", "call-api"}
+# The skills a person may grant (agent-runtime#7): Studio's five and Lake's own areas. agent-runtime
+# decides what each lets an agent do (its skills.py and skills.json); the workspace engine's agent
+# record and lake's pages accept exactly these names.
+SKILLS = {"search", "generate-data", "train", "summarize", "call-api", "drives", "transcripts",
+          "repositories", "datasets", "streams", "pipelines", "usage"}
 WORK_AREAS = {"workspace", "project", "dataset"}
 RUNTIME_PACKAGES = {"openai", "httpx", "pydantic", "pandas", "numpy"}
 SOLUTION_CAPABILITIES = ["decide", "list_ledger", "get_monitor", "get_roi_readout"]
