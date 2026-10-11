@@ -17,7 +17,7 @@ program of its own:
 definition/
   record.json      its AgentRecord: kind orama, skills search + summarize (the reads it needs)
   agent.toml       entrypoint agent.main:run, model gpt-5.5, dependencies openai
-  instructions.md  the prompt (v4)
+  instructions.md  the prompt (v5)
   agent/main.py    the turn: read the workspace, ask, decline or propose, then check the answer
 ```
 
@@ -36,7 +36,9 @@ fails gets one repair round and is otherwise returned **with** its defects, neve
 - a solution-bound agent uses one runnable entry from the turn's live `list_solutions` /
   `get_solution` reads, carries its exact autonomy defaults, approval-gates every A1 action, and
   gets `decide`, `list_ledger`, `get_monitor` and `get_roi_readout` but not `approve_decision`;
-- skills only from Studio's set (`search`, `generate-data`, `train`, `summarize`, `call-api`);
+- skills only from agent-runtime's set (`search`, `generate-data`, `train`, `summarize`, `call-api`,
+  and Lake's own areas: `drives`, `transcripts`, `repositories`, `datasets`, `streams`, `pipelines`,
+  `usage`; agent-runtime#7);
 - work area `workspace`, `project` or `dataset`;
 - methodology dependencies only from the workspace's live `list_methodologies` response and only
   when `runnable: true`; unsupported work is declined with its methodology and tracking issue;

@@ -9,7 +9,7 @@ lake*) and `docs/agents/scaffold.md` first; the org rules in `oramasearch/orama-
   when the person approves (lake#233).
 - **Every rule a proposal must meet is code** in `agent/main.py` (`defects`), not prompt text alone:
   live App/build read grants with proposal-only writes, runnable solutions and methodologies,
-  exact solution autonomy with A1 approval gates, skills from Studio's set, approved runnable
+  exact solution autonomy with A1 approval gates, skills from agent-runtime's set, approved runnable
   Pipelines only, code that compiles and imports only what the runtime ships, no secrets, storage
   that fits the code.
 - **Evals are generated and rule-graded** (`evals/run.py`), run against a real workspace. A prompt
