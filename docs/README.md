@@ -6,3 +6,5 @@
   mutation remains a confirmed proposal delegated to ApplicationAgent.
 - [`solutions/`](solutions/README.md) — how each turn discovers catalogue solutions, binds an
   operating agent to live capabilities and autonomy, and keeps A1 actions approval-gated.
+- [`releases/`](releases/README.md) — one page per tagged release: what it includes, what it does
+  not, known issues and verification.

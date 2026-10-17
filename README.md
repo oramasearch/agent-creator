@@ -8,6 +8,8 @@ in Studio's shape: native or Python, and for Python whether its code is stored i
 repository. **It creates nothing**: lake shows the proposal and creates the agent only when the
 person approves it.
 
+**Current release: [v0.1.0](docs/releases/v0.1.0.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
+
 ## How it runs
 
 It is a **definition** on [`agent-runtime`](https://github.com/oramasearch/agent-runtime), not a
