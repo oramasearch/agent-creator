@@ -8,7 +8,7 @@ in Studio's shape: native or Python, and for Python whether its code is stored i
 repository. **It creates nothing**: lake shows the proposal and creates the agent only when the
 person approves it.
 
-**Current release: [v0.1.0](docs/releases/v0.1.0.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
+**Current release: [v0.2.0](docs/releases/v0.2.0.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
 
 ## How it runs
 
@@ -17,8 +17,8 @@ program of its own:
 
 ```
 definition/
-  record.json      its AgentRecord: kind orama, skills search + summarize (the reads it needs)
-  agent.toml       entrypoint agent.main:run, model gpt-5.5, dependencies openai
+  record.json      its AgentRecord: kind orama, skills search + summarize + pipelines (the reads it needs)
+  agent.toml       entrypoint agent.main:run, model gpt-5.5, dependencies openai, tools = its reads only
   instructions.md  the prompt (v5)
   agent/main.py    the turn: read the workspace, ask, decline or propose, then check the answer
 ```
