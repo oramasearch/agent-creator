@@ -1,0 +1,381 @@
+{
+ "skills": [
+  {
+   "name": "search",
+   "label": "Search data",
+   "reads": [
+    "get_dataset",
+    "get_doc",
+    "get_holdout_experiment",
+    "get_index",
+    "get_monitor",
+    "get_policy",
+    "get_roi_readout",
+    "get_solution",
+    "list_connections",
+    "list_datasets",
+    "list_docs",
+    "list_indexes",
+    "list_ledger",
+    "list_solutions",
+    "list_source_tables",
+    "search",
+    "search_index",
+    "search_workspace_index"
+   ],
+   "proposals": [
+    "create_index",
+    "expose_index",
+    "unexpose_index"
+   ],
+   "direct": []
+  },
+  {
+   "name": "generate-data",
+   "label": "Generate a dataset",
+   "reads": [
+    "list_dataset_generators",
+    "list_datasets"
+   ],
+   "proposals": [],
+   "direct": [
+    "generate_dataset"
+   ]
+  },
+  {
+   "name": "train",
+   "label": "Train a Model",
+   "reads": [
+    "agent_training_status",
+    "compare_runs",
+    "get_dataset",
+    "get_experiment",
+    "get_experiment_analysis",
+    "get_holdout_experiment",
+    "get_job",
+    "get_methodology",
+    "get_methodology_run",
+    "get_model",
+    "get_monitor",
+    "get_pipeline",
+    "get_policy",
+    "get_project",
+    "get_roi_readout",
+    "get_run",
+    "get_run_metrics",
+    "get_run_report",
+    "get_solution",
+    "list_datasets",
+    "list_experiment_trials",
+    "list_experiments",
+    "list_jobs",
+    "list_ledger",
+    "list_methodologies",
+    "list_methodology_runs",
+    "list_models",
+    "list_projects",
+    "list_runs",
+    "list_solutions",
+    "tail_experiment_events",
+    "validate_experiment"
+   ],
+   "proposals": [
+    "promote_trial",
+    "start_experiment",
+    "stop_experiment",
+    "stop_experiment_trial"
+   ],
+   "direct": [
+    "check_pipeline",
+    "start_run"
+   ]
+  },
+  {
+   "name": "summarize",
+   "label": "Summarize and explain",
+   "reads": [
+    "get_holdout_experiment",
+    "get_model",
+    "get_monitor",
+    "get_policy",
+    "get_project",
+    "get_roi_readout",
+    "get_run",
+    "get_run_report",
+    "get_solution",
+    "get_trace",
+    "get_workspace",
+    "list_ledger",
+    "list_models",
+    "list_projects",
+    "list_runs",
+    "list_solutions",
+    "list_traces",
+    "model_health",
+    "model_traffic",
+    "workspace_engine_info",
+    "workspace_status"
+   ],
+   "proposals": [],
+   "direct": []
+  },
+  {
+   "name": "call-api",
+   "label": "Call the API",
+   "reads": [
+    "explain",
+    "get_holdout_experiment",
+    "get_model",
+    "get_monitor",
+    "get_policy",
+    "get_roi_readout",
+    "get_solution",
+    "list_indexes",
+    "list_ledger",
+    "list_models",
+    "list_solutions",
+    "predict",
+    "resolve_model",
+    "score",
+    "search_workspace_index"
+   ],
+   "proposals": [
+    "approve_decision",
+    "expose_model",
+    "unexpose_model"
+   ],
+   "direct": [
+    "decide",
+    "record_outcome"
+   ]
+  },
+  {
+   "name": "drives",
+   "label": "Use drives",
+   "reads": [
+    "diff_drive_versions",
+    "download_drive_file",
+    "drive_browse",
+    "drive_conflict",
+    "drive_history",
+    "drive_preview",
+    "drive_shared_with_me",
+    "get_drive",
+    "get_drive_entry",
+    "list_drive_entries",
+    "list_drives",
+    "read_drive_file",
+    "recent_drive_entries",
+    "search_drives"
+   ],
+   "proposals": [
+    "append_drive_upload",
+    "begin_drive_upload",
+    "create_drive",
+    "create_drive_folder",
+    "create_drive_folder_entry",
+    "create_drive_shortcut",
+    "delete_drive",
+    "delete_drive_entry",
+    "delete_drive_path",
+    "finish_drive_upload",
+    "move_drive_entry",
+    "move_drive_path",
+    "rename_drive",
+    "restore_drive_version",
+    "upload_drive_entries",
+    "upload_drive_files"
+   ],
+   "direct": []
+  },
+  {
+   "name": "transcripts",
+   "label": "Use transcripts",
+   "reads": [
+    "get_transcript",
+    "list_transcripts"
+   ],
+   "proposals": [
+    "create_transcript",
+    "delete_transcript",
+    "transcribe",
+    "update_transcript"
+   ],
+   "direct": []
+  },
+  {
+   "name": "repositories",
+   "label": "Work in repositories",
+   "reads": [
+    "change_diff",
+    "environment_logs",
+    "get_artifact",
+    "get_change",
+    "get_environment",
+    "get_repository",
+    "list_artifacts",
+    "list_branch_protections",
+    "list_changes",
+    "list_conflicts",
+    "list_deployments",
+    "list_environments",
+    "list_issue_comments",
+    "list_issues",
+    "list_releases",
+    "list_repositories",
+    "list_review_comments",
+    "list_reviews",
+    "refs",
+    "repository_file",
+    "repository_refs",
+    "repository_tree",
+    "resolve_dataset_file",
+    "resolve_model_file"
+   ],
+   "proposals": [
+    "commit_repository_files",
+    "create_issue",
+    "create_issue_comment",
+    "create_release",
+    "create_repository",
+    "create_review",
+    "create_review_comment",
+    "delete_repository",
+    "import_github_repository",
+    "import_repository",
+    "map_review_anchors",
+    "rename_repository",
+    "resolve_conflict",
+    "stage_repository_file",
+    "update_issue",
+    "update_review"
+   ],
+   "direct": []
+  },
+  {
+   "name": "datasets",
+   "label": "Load datasets",
+   "reads": [
+    "analyze_dataset",
+    "get_dataset",
+    "list_connections",
+    "list_dataset_generators",
+    "list_datasets",
+    "list_source_tables",
+    "plan_features"
+   ],
+   "proposals": [
+    "create_connection",
+    "create_dataset_from_query",
+    "delete_connection",
+    "delete_dataset",
+    "load_drive_dataset",
+    "promote_dataset",
+    "upload_dataset"
+   ],
+   "direct": []
+  },
+  {
+   "name": "streams",
+   "label": "Read and publish streams",
+   "reads": [
+    "browse_stream",
+    "get_stream",
+    "list_streams"
+   ],
+   "proposals": [
+    "create_stream",
+    "delete_stream",
+    "delete_stream_messages",
+    "publish_stream_message",
+    "update_stream",
+    "update_stream_message"
+   ],
+   "direct": []
+  },
+  {
+   "name": "pipelines",
+   "label": "Design pipelines",
+   "reads": [
+    "draft_methodology",
+    "get_methodology",
+    "get_methodology_run",
+    "get_pipeline",
+    "get_project",
+    "get_run",
+    "get_run_report",
+    "get_solution",
+    "latest_agent_task",
+    "list_methodologies",
+    "list_methodology_runs",
+    "list_opportunities",
+    "list_projects",
+    "list_runs",
+    "list_solutions",
+    "render_pipeline"
+   ],
+   "proposals": [
+    "agent_run",
+    "approve_pipeline",
+    "capture_intent",
+    "check_pipeline",
+    "compile_intent",
+    "compile_n8n",
+    "compile_pipeline",
+    "compile_python",
+    "compose_solution",
+    "confirm_solution",
+    "create_methodology",
+    "create_pipeline",
+    "create_project",
+    "create_projects_from_opportunities",
+    "create_solution",
+    "delete_index",
+    "delete_methodology",
+    "delete_model",
+    "delete_project",
+    "delete_run",
+    "delete_solution",
+    "deploy_pipeline",
+    "dismiss_opportunity",
+    "duplicate_methodology",
+    "duplicate_solution",
+    "edit_pipeline",
+    "import_n8n",
+    "load_drive_model",
+    "move_model_to_project",
+    "register_model",
+    "retrain_model",
+    "run_methodology",
+    "run_pipeline",
+    "run_solution",
+    "save_pipeline",
+    "start_run",
+    "start_solution",
+    "stop_methodology_run",
+    "train_model",
+    "update_methodology",
+    "update_policy",
+    "update_solution",
+    "validate_methodology"
+   ],
+   "direct": []
+  },
+  {
+   "name": "usage",
+   "label": "Read usage and billing",
+   "reads": [
+    "bill_preview",
+    "billing_account",
+    "get_invoice",
+    "list_invoices",
+    "metering_usage",
+    "price_list",
+    "usage_limits",
+    "usage_over_time"
+   ],
+   "proposals": [],
+   "direct": []
+  }
+ ]
+}

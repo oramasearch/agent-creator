@@ -4,6 +4,6 @@
   "kind": "orama",
   "purpose": "Proposes a new agent from a conversation and creates nothing until the person approves.",
   "work_area": {"kind": "workspace", "detail": ""},
-  "skills": ["search", "summarize"],
+  "skills": ["search", "summarize", "pipelines"],
   "model_name": "gpt-5.5"
 }

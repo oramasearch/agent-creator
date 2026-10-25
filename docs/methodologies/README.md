@@ -34,9 +34,25 @@ runner calls lake's `workspace_query` with
 `{"customer_id": "...", "capability": "list_methodologies", "input": {}}`, the same envelope used
 for its other workspace reads.
 
+## The grant
+
+On a deployed turn the runtime makes a tool only of what the agent's record grants
+(agent-runtime's `lake_grant`), so the read must be granted, not just called. `search` and
+`summarize` do not grant `list_methodologies`; `pipelines` does, so `definition/record.json` carries
+`["search", "summarize", "pipelines"]` ([agent-creator#11](https://github.com/oramasearch/agent-creator/issues/11)).
+`definition/agent.toml`'s `tools` allow-list then keeps AgentCreator to exactly the twelve reads a
+turn makes, so none of `pipelines`' proposals is ever one of its tools.
+
 ## Verification
 
 `uv run pytest` uses a fake workspace client to cover a runnable proposal, an unsupported decline
 with its issue, the old-engine fallback, first-call ordering, and the proposal validator. The live
 eval runner derives one runnable and one unsupported case from the registry response instead of
 hard-coding portfolio status.
+
+`tests/test_grants.py` runs the turn against a workspace that answers only the tools agent-runtime
+would give this record: the reads of its skills from agent-runtime's `skills.json` (vendored at
+`tests/fixtures/agent-runtime-skills.json`), plus every agent's App and build reads, filtered by the
+allow-list. It fails when a turn makes a read the record does not grant, and when the allow-list
+differs from the reads a turn makes. Refresh the fixture when agent-runtime's skills change:
+`git -C <agent-runtime checkout> show origin/dev:skills.json > tests/fixtures/agent-runtime-skills.json`.

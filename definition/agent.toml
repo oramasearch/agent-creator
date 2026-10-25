@@ -2,3 +2,13 @@
 entrypoint = "agent.main:run"
 model = "gpt-5.5"
 dependencies = ["openai"]
+# Only the reads a turn makes (agent-creator#11). The record's `pipelines` skill is what grants
+# list_methodologies; this list keeps its proposals, and every other tool, out of AgentCreator's
+# reach. tests/test_grants.py fails when a turn reads something not listed here.
+tools = [
+    "list_solutions", "get_solution",
+    "list_apps", "get_app", "receive_app_events",
+    "list_builds", "get_build", "receive_build_events",
+    "list_methodologies",
+    "list_datasets", "list_projects", "get_project",
+]

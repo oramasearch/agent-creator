@@ -8,4 +8,6 @@ record runnable dependencies. `agent/` contains the deterministic checks that en
 instructions.
 
 `record.json` and `agent.toml` keep AgentCreator as a definition on `agent-runtime`; it proposes
-agents and creates nothing.
+agents and creates nothing. The record grants `search`, `summarize` and `pipelines` (the last for
+`list_methodologies`, agent-creator#11), and `agent.toml`'s `tools` allow-list narrows them to the
+reads a turn makes, so AgentCreator has no proposal tool of its own.
