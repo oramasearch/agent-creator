@@ -29,7 +29,7 @@ typing_extensions  4.16.0     PSF-2.0                               Python depen
 Container base image
 
 The image is built FROM oramasearch/agent-runtime (https://github.com/oramasearch/agent-runtime,
-MIT, Orama Search Inc.), which is python:3.12-slim (Debian plus CPython, PSF-2.0) with its Python
+MIT, OramaSearch, Inc.), which is python:3.12-slim (Debian plus CPython, PSF-2.0) with its Python
 dependencies; agent-runtime's THIRD_PARTY_LICENSES lists them. The Debian packages keep their own
 licenses, recorded in the image at /usr/share/doc/*/copyright.
 
