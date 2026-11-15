@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """AgentCreator's turn with a scripted model and a workspace answered from tables."""
 
 from __future__ import annotations

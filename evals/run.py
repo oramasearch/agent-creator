@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """AgentCreator's evals: generated asks, graded by rules, run live against a real workspace.
 
 The asks are generated from Studio's skills and work areas plus live Apps, builds, methodologies

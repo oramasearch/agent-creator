@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """AgentCreator's turn: read the workspace, then ask, decline or propose and check the answer.
 
 It proposes and never creates: lake's Agent Factory shows the proposal and creates the agent only
