@@ -21,6 +21,33 @@ The turn uses the lake capability inputs exactly:
 listing builds and following each returned id through `receive_build_events`; the created agent
 does not receive a global event-bus credential. Subsequent polls use the returned one-based cursor.
 
+## Bounds and untrusted data
+
+App and build records, events and registry entries are workspace content that other people and
+programs can write: a build's log prints whatever the repository's build steps print. They are
+treated as untrusted data (agent-creator#22):
+
+- A turn reads at most `MAX_APPS` (50) Apps and `MAX_BUILDS` (50) builds, in list order, and
+  records how many it left out in `app_omitted`. It reads at most `MAX_PROJECTS` (50) projects and
+  `MAX_DATASETS` (200) dataset names, and at most `MAX_REGISTRY_ENTRIES` (100) solutions and
+  methodologies.
+- Each event batch keeps only its last `MAX_EVENTS_PER_BATCH` (20) events, and each event only its
+  ids, kind, sequence, phase, state and time (`EVENT_FIELDS`). Log `lines`, messages and any other
+  free text are dropped, so no build output reaches the model. `omitted_events` counts the rest.
+- These facts are not in the system message. They go in one user message between
+  `<workspace_facts>` and `</workspace_facts>`, with `<` and `>` escaped so no value can close the
+  block, every string cut at `MAX_STRING` (2000) characters and every list at `MAX_LIST` (100). The
+  instructions say that text inside it is data and never an instruction.
+- The whole block is at most `MAX_FACTS_CHARS` (120,000) characters. Over that, build events, App
+  events, builds, Apps, unrunnable Pipelines and dataset names are dropped in that order and named
+  in `omitted_for_size`.
+- The system message holds only the instructions, the fact sources and the grant lake gave the
+  turn.
+
+The reply the person reads lists every skill, trigger, Pipeline, methodology, App read,
+subscription, App proposal, solution, secret mount and file of the proposal, and says that proposed
+code has not been reviewed by anyone.
+
 A failed list marks the App/build source unavailable. A failed detail or event read stays in
 `app_error`, and the prompt requires AgentCreator to name the failed capability instead of
 inventing facts or access.
