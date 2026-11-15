@@ -68,13 +68,17 @@ LAKE_URL=https://lake.oramadev.net LAKE_TOKEN=<a person's token> CUSTOMER_ID=<th
 ## Image
 
 Private on Docker Hub as `oramasearch/agent-creator`, built on the cluster BuildKit from a pushed
-runtime tag:
+runtime tag and its digest:
 
 ```sh
 buildctl ... build --frontend dockerfile.v0 --local context=. --local dockerfile=. \
-  --opt build-arg:RUNTIME_TAG=<agent-runtime tag> --opt platform=linux/amd64 \
+  --opt build-arg:RUNTIME_TAG=<agent-runtime tag> \
+  --opt build-arg:RUNTIME_DIGEST=sha256:<agent-runtime digest> --opt platform=linux/amd64 \
   --output type=image,name=docker.io/oramasearch/agent-creator:<tag>,push=true
 ```
+
+The base is pinned by digest (lake#1003): `RUNTIME_DIGEST` is the digest the push of that
+agent-runtime tag reported, so a moved tag cannot change what is built. The build fails without it.
 
 ## Tests
 
