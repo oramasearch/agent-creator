@@ -7,7 +7,7 @@ in Studio's shape: native or Python, and for Python whether its code is stored i
 repository. **It creates nothing**: lake shows the proposal and creates the agent only when the
 person approves it.
 
-**Current release: [v0.3.0](docs/releases/v0.3.0.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
+**Current release: [v0.3.1](docs/releases/v0.3.1.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
 
 ## How it runs
 
