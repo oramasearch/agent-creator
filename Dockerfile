@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 # SPDX-License-Identifier: MIT
 
-# AgentCreator (zetta#1017): private on Docker Hub as oramasearch/agent-creator. It is a definition
-# that runs on agent-runtime: this image is the runtime plus the definition, served lake-wide with
-# per-turn credentials (the person's key rides on each turn).
+# AgentCreator, published on Docker Hub as oramasearch/agent-creator. It is a definition that runs
+# on agent-runtime: this image is the runtime plus the definition, served lake-wide with per-turn
+# credentials (the person's key rides on each turn).
 ARG RUNTIME_TAG
 FROM docker.io/oramasearch/agent-runtime:${RUNTIME_TAG}
 COPY definition /definition
