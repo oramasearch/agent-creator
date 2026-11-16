@@ -2,17 +2,17 @@
   "spdxVersion": "SPDX-2.3",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "name": "agent-creator-ddac7c5eb542",
-  "documentNamespace": "https://github.com/oramasearch/agent-creator/sbom/ddac7c5eb542421bbf2090c7ff3c82088b8ce39e",
+  "name": "agent-creator-v0.3.0",
+  "documentNamespace": "https://github.com/oramasearch/agent-creator/sbom/c23b8b283d7af1afeb5f1681256979d3b82c6762",
   "creationInfo": {
-    "created": "2026-11-16T01:54:04Z",
+    "created": "2026-11-16T07:27:38Z",
     "creators": [
       "Organization: OramaSearch, Inc.",
       "Tool: tools/sbom.py",
       "Tool: syft"
     ],
     "licenseListVersion": "3.29",
-    "comment": "Made from source commit ddac7c5eb542421bbf2090c7ff3c82088b8ce39e by tools/sbom.py."
+    "comment": "Made from source commit c23b8b283d7af1afeb5f1681256979d3b82c6762 by tools/sbom.py."
   },
   "documentDescribes": [
     "SPDXRef-DocumentRoot"
@@ -20,8 +20,8 @@
   "packages": [
     {
       "name": "agent-creator",
-      "SPDXID": "SPDXRef-Package-python-agent-creator-50bb4f13018f1d50",
-      "versionInfo": "0.2.0",
+      "SPDXID": "SPDXRef-Package-python-agent-creator-599494646e437267",
+      "versionInfo": "0.3.0",
       "supplier": "NOASSERTION",
       "downloadLocation": "NOASSERTION",
       "filesAnalyzed": false,
@@ -33,174 +33,174 @@
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-creator:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-creator:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-creator:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-creator:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_creator:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_creator:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_creator:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_creator:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-creator:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-creator:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-creator:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-creator:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_creator:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_creator:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_creator:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_creator:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-creator:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-creator:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent-creator:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent-creator:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_creator:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_creator:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent_creator:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent_creator:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-creator:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-creator:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent-creator:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent-creator:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_creator:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_creator:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent_creator:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent_creator:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:python-agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:python-agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:python_agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:python_agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python-agent:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python-agent:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python_agent:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python_agent:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:python:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:python:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:agent-creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:agent-creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "SECURITY",
           "referenceType": "cpe23Type",
-          "referenceLocator": "cpe:2.3:a:agent:agent_creator:0.2.0:*:*:*:*:*:*:*"
+          "referenceLocator": "cpe:2.3:a:agent:agent_creator:0.3.0:*:*:*:*:*:*:*"
         },
         {
           "referenceCategory": "PACKAGE-MANAGER",
           "referenceType": "purl",
-          "referenceLocator": "pkg:pypi/agent-creator@0.2.0"
+          "referenceLocator": "pkg:pypi/agent-creator@0.3.0"
         }
       ]
     },
     {
       "name": "agent-creator",
       "SPDXID": "SPDXRef-DocumentRoot",
-      "versionInfo": "ddac7c5eb542",
+      "versionInfo": "v0.3.0",
       "downloadLocation": "git+https://github.com/oramasearch/agent-creator.git",
       "homepage": "https://github.com/oramasearch/agent-creator",
       "filesAnalyzed": false,
@@ -2451,17 +2451,17 @@
       "spdxElementId": "SPDXRef-DOCUMENT"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-python-agent-creator-50bb4f13018f1d50",
+      "relatedSpdxElement": "SPDXRef-Package-python-agent-creator-599494646e437267",
       "relationshipType": "CONTAINS",
       "spdxElementId": "SPDXRef-DocumentRoot"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-python-agent-creator-50bb4f13018f1d50",
+      "relatedSpdxElement": "SPDXRef-Package-python-agent-creator-599494646e437267",
       "relationshipType": "DEPENDENCY_OF",
       "spdxElementId": "SPDXRef-Package-python-httpx-b8665b7937415e27"
     },
     {
-      "relatedSpdxElement": "SPDXRef-Package-python-agent-creator-50bb4f13018f1d50",
+      "relatedSpdxElement": "SPDXRef-Package-python-agent-creator-599494646e437267",
       "relationshipType": "DEPENDENCY_OF",
       "spdxElementId": "SPDXRef-Package-python-openai-51a4dfb974c90277"
     },
