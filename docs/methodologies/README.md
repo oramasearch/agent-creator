@@ -39,7 +39,7 @@ for its other workspace reads.
 On a deployed turn the runtime makes a tool only of what the agent's record grants
 (agent-runtime's `lake_grant`), so the read must be granted, not just called. `search` and
 `summarize` do not grant `list_methodologies`; `pipelines` does, so `definition/record.json` carries
-`["search", "summarize", "pipelines"]` ([agent-creator#11](https://github.com/oramasearch/agent-creator/issues/11)).
+`["search", "summarize", "pipelines"]`.
 `definition/agent.toml`'s `tools` allow-list then keeps AgentCreator to exactly the twelve reads a
 turn makes, so none of `pipelines`' proposals is ever one of its tools.
 
