@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """The version in pyproject.toml has release notes, and the release index lists them."""
 
 from __future__ import annotations

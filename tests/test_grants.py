@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """AgentCreator's own record grants every read its turn makes (agent-creator#11).
 
 The fake workspace in test_creator.py answers every read, so it cannot see a read the record does

@@ -126,3 +126,9 @@ and supplies no compatibility solution. The complete binding and refusal contrac
 facts}}`: the question, decline, or proposal in one sentence for a person; the structured answer
 for lake's Factory page and API callers. It needs an agent-runtime that returns
 `result`.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party components and their licenses are in
+[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES). Contributions are welcome under the
+[Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).
