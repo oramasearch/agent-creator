@@ -133,5 +133,5 @@ for lake's Factory page and API callers (agent-creator#1). It needs an agent-run
 ## License
 
 MIT, see [LICENSE](LICENSE). Third-party components and their licenses are in
-[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES). Contributions are welcome under the Developer
-Certificate of Origin; see [CONTRIBUTING.md](CONTRIBUTING.md).
+[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES). Contributions are welcome under the
+[Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).
