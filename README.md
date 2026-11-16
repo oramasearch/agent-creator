@@ -1,14 +1,13 @@
 # agent-creator
 
-**AgentCreator**, the agent behind lake's **Agent Factory** ([lake#228](https://github.com/oramasearch/lake/issues/228),
-[zetta#1017](https://github.com/oramasearch/zetta/issues/1017), [lake#233](https://github.com/oramasearch/lake/issues/233)),
+**AgentCreator**, the agent behind lake's **Agent Factory**,
 and an entry of the Agent Library. A person tells it what they want an agent for; it asks what it
 must (one question at a time), declines work the workspace engine cannot run, or proposes the agent
 in Studio's shape: native or Python, and for Python whether its code is stored in Zetta or a lake
 repository. **It creates nothing**: lake shows the proposal and creates the agent only when the
 person approves it.
 
-**Current release: [v0.2.0](docs/releases/v0.2.0.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
+**Current release: [v0.3.0](docs/releases/v0.3.0.md)** (all releases: [`docs/releases/`](docs/releases/README.md)).
 
 ## How it runs
 
@@ -61,19 +60,17 @@ be granted, and an ask that needs code must not get a native agent. Reports land
 [`reports/`](reports/); no score is claimed that the runner did not produce.
 
 ```sh
-LAKE_URL=https://lake.oramadev.net LAKE_TOKEN=<a person's token> CUSTOMER_ID=<their space> \
+LAKE_URL=https://lake.example.com LAKE_TOKEN=<a person's token> CUSTOMER_ID=<their space> \
   uv run python evals/run.py
 ```
 
 ## Image
 
-Private on Docker Hub as `oramasearch/agent-creator`, built on the cluster BuildKit from a pushed
-runtime tag:
+Published on Docker Hub as `oramasearch/agent-creator`, built on a pushed agent-runtime tag:
 
 ```sh
-buildctl ... build --frontend dockerfile.v0 --local context=. --local dockerfile=. \
-  --opt build-arg:RUNTIME_TAG=<agent-runtime tag> --opt platform=linux/amd64 \
-  --output type=image,name=docker.io/oramasearch/agent-creator:<tag>,push=true
+docker buildx build --platform linux/amd64 --build-arg RUNTIME_TAG=<agent-runtime tag> \
+  -t <registry>/agent-creator:<tag> --push .
 ```
 
 ## Tests
@@ -120,12 +117,18 @@ and supplies no compatibility solution. The complete binding and refusal contrac
 - It proposes only what the fixed skills can do; an agent that needs a new kind of access needs a
   new skill in agent-runtime first.
 - It checks that Python compiles, not that it does the right thing: lake's check job after
-  creation (lake#233) is where a new agent first runs.
+  creation is where a new agent first runs.
 
 
 ## Its answer
 
 `run` answers `{"reply": <words>, "result": {kind, question | decline | proposal, defects,
 facts}}`: the question, decline, or proposal in one sentence for a person; the structured answer
-for lake's Factory page and API callers (agent-creator#1). It needs an agent-runtime that returns
+for lake's Factory page and API callers. It needs an agent-runtime that returns
 `result`.
+
+## License
+
+MIT, see [LICENSE](LICENSE). Third-party components and their licenses are in
+[THIRD_PARTY_LICENSES](THIRD_PARTY_LICENSES). Contributions are welcome under the
+[Contributor License Agreement](CLA.md); see [CONTRIBUTING.md](CONTRIBUTING.md).

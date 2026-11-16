@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: MIT
+
 """AgentCreator's turn with a scripted model and a workspace answered from tables."""
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ S1 = {
     "use_case": "Prevent avoidable churn.",
     "status": "catalogue",
     "runnable": True,
-    "issue": "https://github.com/oramasearch/zetta/issues/1102",
+    "issue": "https://tracker.example.com/issues/1102",
     "autonomy_defaults": [
         {"action_class": "score and create tasks", "autonomy": "A2"},
         {"action_class": "concessions", "autonomy": "A1"},
@@ -51,7 +53,7 @@ S5 = {
     "use_case": "Forecast demand.",
     "status": "catalogue",
     "runnable": False,
-    "issue": "https://github.com/oramasearch/zetta/issues/1106",
+    "issue": "https://tracker.example.com/issues/1106",
     "autonomy_defaults": [
         {"action_class": "planning decisions", "autonomy": "A1"},
     ],
@@ -64,7 +66,7 @@ B1 = {
     "use_case": "Bound price changes.",
     "status": "sketch",
     "runnable": False,
-    "issue": "https://github.com/oramasearch/zetta/issues/1102",
+    "issue": "https://tracker.example.com/issues/1102",
     "autonomy_defaults": [],
     "promotion_condition": "Promote after controlled price experiments are available.",
 }
